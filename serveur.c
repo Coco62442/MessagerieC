@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     }
     printf("Message reçu : %s\n", msg);
 
-    if (send(dSC, &r, sizeof(int) + 1, 0) < 0)
+    if (send(dSC, &r, sizeof(int), 0) < 0)
     {
       perror("Problème d'envoi depuis le serveur");
       return 0;

@@ -30,11 +30,12 @@ int main(int argc, char *argv[])
   printf("Socket Connecté\n");
 
   char *buffer = (char *)malloc(MAX_LENGTH);
+  int taille = 0;
   while (1)
   {
     printf("Entrer un message de taille max %d: \n", MAX_LENGTH - 1);
     fgets(buffer, MAX_LENGTH, stdin);
-    int taille = strlen(buffer) + 1;
+    taille = strlen(buffer) + 1;
 
     if (send(dS, &taille, sizeof(int), 0) < 0)
     {
