@@ -26,7 +26,10 @@ int main(int argc, char *argv[])
   inet_pton(AF_INET, argv[1], &(aS.sin_addr));
   aS.sin_port = htons(atoi(argv[2]));
   socklen_t lgA = sizeof(struct sockaddr_in);
-  connect(dS, (struct sockaddr *)&aS, lgA);
+  if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
+  {
+    perror("Problème de connexion au serveur");
+  }
   printf("Socket Connecté\n");
 
   char *buffer = (char *)malloc(MAX_LENGTH);
@@ -35,7 +38,8 @@ int main(int argc, char *argv[])
   {
     printf("Entrer un message de taille max %d: \n", MAX_LENGTH - 1);
     fgets(buffer, MAX_LENGTH, stdin);
-    taille = strlen(buffer) + 1;
+    taille = strlen(buffer);
+    printf("Taille du message : %d\n", taille - 1);
 
     if (send(dS, &taille, sizeof(int), 0) < 0)
     {
@@ -50,15 +54,8 @@ int main(int argc, char *argv[])
       return 0;
     }
     printf("Message Envoyé \n");
-
-    int r;
-    if (recv(dS, &r, sizeof(int), 0) < 0)
-    {
-      perror("Problème de réception du client");
-      return 0;
-    }
-    printf("Réponse reçue : %d\n", r);
   }
+  free(buffer);
   shutdown(dS, 2);
   printf("Fin du programme\n");
 }
