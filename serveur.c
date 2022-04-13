@@ -40,13 +40,19 @@ int main(int argc, char *argv[]) {
 
 	int taille_chaine;
 			
-	int error_recv = recv(dSC1, &taille_chaine, sizeof(int), 0);
-	if (error_recv < 0) {
+	int error_recv1 = recv(dSC1, &taille_chaine, sizeof(int), 0);
+	if (error_recv1 < 0) {
 		perror("Erreur lors de la réception du message\n");
 		return 0;
 	}
 	printf("Message reçu : %d\n", taille_chaine) ;
 
+	int error_send1 = send(dSC2, &taille_chaine, sizeof(int), 0);
+	if (error_send1 < 0) {
+		perror("Le message n'a pas pu être envoyé\n");
+		return 0;
+	}
+	printf("Message Envoyé\n");
 
 	char *msg = malloc(sizeof(char)*taille_chaine);
 	int error_recv2 = recv(dSC1, msg, taille_chaine, 0);
@@ -56,8 +62,8 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Message reçu : %s\n", msg) ;
 	
-	int error_send = send(dSC2, msg, sizeof(char)*taille_chaine, 0);
-	if (error_send < 0) {
+	int error_send2 = send(dSC2, msg, sizeof(char)*taille_chaine, 0);
+	if (error_send2 < 0) {
 		perror("Le message n'a pas pu être envoyé\n");
 		return 0;
 	}
