@@ -13,12 +13,6 @@ int main(int argc, char *argv[]) {
   int dS = socket(PF_INET, SOCK_STREAM, 0);
   printf("Socket Créé\n");
 
-  // Message a envoyé
-  
-  char * chaine = malloc(10*sizeof(char));
-  printf("Entrer un mot de 9 caractères maximum\n");
-  fgets(chaine, 10, stdin);
-
   struct sockaddr_in aS;
   aS.sin_family = AF_INET;
   inet_pton(AF_INET,argv[1],&(aS.sin_addr));
@@ -30,29 +24,28 @@ int main(int argc, char *argv[]) {
 	  return 0;
   };
   printf("Socket Connecté\n");
+
+  // Message a envoyé
+  
+  char * chaine = malloc(10*sizeof(char));
+  printf("Entrer un mot de 9 caractères maximum\n");
+  fgets(chaine, 10, stdin);
+  
   int taille_chaine = strlen(chaine);
-	while (0) {
 		
-		int error_send = send(dS, &taille_chaine, sizeof(int) , 0) ;
-		if (error_send < 0) {
-			perror("Erreur lors de l\'envoie du message au serveur");
-		};
-		printf("Message Envoyé \n");
-
-
-		int error_send2 = send(dS, chaine, strlen(chaine) + 1 , 0) ;
-		if (error_send2 < 0) {
-			perror("Erreur lors de l\'envoie du message au serveur");
-		};
-		printf("Message Envoyé \n");
-
-		int r;
-		int error_recv = recv(dS, &r, sizeof(int), 0);
-		if (error_recv < 0) {
-			perror("Erreur le message n\'a pas été reçu");
-		};
-		printf("Réponse reçue : %d\n", r) ;
+	int error_send = send(dS, &taille_chaine, sizeof(int) , 0) ;
+	if (error_send < 0) {
+		perror("Erreur lors de l\'envoie du message au serveur");
 	};
+	printf("Message Envoyé \n");
+
+
+	int error_send2 = send(dS, chaine, strlen(chaine) + 1 , 0) ;
+	if (error_send2 < 0) {
+		perror("Erreur lors de l\'envoie du message au serveur");
+	};
+	printf("Message Envoyé \n");
+
   free(chaine);
   shutdown(dS,2) ;
   printf("Fin du programme\n");
