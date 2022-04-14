@@ -3,12 +3,67 @@
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 // argv[1] = adresse ip
 // argv[2] = port
 
-int main(int argc, char *argv[]) {
+void *envoieMsg(void * arg) {
+	int dS = (int) arg;
+	char * chaine = malloc(200*sizeof(char));
+	do {
+		// Message a envoyé
 
+		printf("Entrer votre message\n");
+		fgets(chaine, 200, stdin);
+
+		int tailleChaineEnvoie = strlen(chaine);
+			
+		int error_send = send(dS, &tailleChaineEnvoie, sizeof(int) , 0) ;
+		if (error_send < 0) {
+			perror("Erreur lors de l\'envoie du message au serveur");
+		};
+		printf("Message Envoyé \n");
+
+
+		int error_send2 = send(dS, chaine, strlen(chaine) + 1 , 0) ;
+		if (error_send2 < 0) {
+			perror("Erreur lors de l\'envoie du message au serveur");
+		};
+		printf("Message Envoyé \n");
+
+	} while (!strcmp(chaine, "fin"));
+	free(chaine);
+	pthread_exit(NULL);
+}
+
+
+
+void *recuMsg(void * arg) {
+	int dS = (int) arg;	
+	char * rep;
+	do {
+		int tailleChaineRecu;
+		int error_recv1 = recv(dS, &tailleChaineRecu, sizeof(int), 0);
+		if (error_recv1 < 0) {
+			perror("Erreur le message n\'a pas été reçu");
+		};
+		printf("Réponse reçue : %d\n", tailleChaineRecu);
+
+
+		rep = malloc(sizeof(char)*tailleChaineRecu);
+		int error_recv2 = recv(dS, rep, sizeof(char)*tailleChaineRecu, 0);
+		if (error_recv2 < 0) {
+			perror("Erreur le message n\'a pas été reçu");
+		};
+		printf("Réponse reçue : %s\n", rep) ;
+
+		free(rep);
+	} while (!strcmp(rep, "fin"));
+	pthread_exit(NULL);
+}
+
+int main(int argc, char *argv[]) {
 	printf("Début programme\n");
 	int dS = socket(PF_INET, SOCK_STREAM, 0);
 	printf("Socket Créé\n");
@@ -25,22 +80,15 @@ int main(int argc, char *argv[]) {
 	};
 	printf("Socket Connecté\n");
 
-	int taille_chaine;
-	int error_recv1 = recv(dS, &taille_chaine, sizeof(int), 0);
-	if (error_recv1 < 0) {
-		perror("Erreur le message n\'a pas été reçu");
-	};
-	printf("Réponse reçue : %d\n", taille_chaine);
+	pthread_t thread_envoie;
+	pthread_t thread_recu;
+	pthread_create(&thread_envoie, NULL, envoieMsg, (void *) (int) dS);
+	pthread_create(&thread_recu, NULL, recuMsg, (void *) (int) dS);
+	
 
-
-	char * rep = malloc(sizeof(char)*taille_chaine);
-	int error_recv2 = recv(dS, rep, sizeof(char)*taille_chaine, 0);
-	if (error_recv2 < 0) {
-		perror("Erreur le message n\'a pas été reçu");
-	};
-	printf("Réponse reçue : %s\n", rep) ;
-
-	free(rep);
-	shutdown(dS,2) ;
+	pthread_join(thread_envoie,0);
+	pthread_join(thread_recu,0);
+	
 	printf("Fin du programme\n");
+	return 0;
 }
