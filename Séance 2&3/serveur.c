@@ -4,8 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-// argv[1] = port
+pthread_t thread;
+void* envoie(void* args) {
+  printf("test");
+}
 
+// argv[1] = port
 int main(int argc, char *argv[])
 {
 
@@ -15,7 +19,7 @@ int main(int argc, char *argv[])
   if (dS < 0)
   {
     perror("Problème de création de socket serveur");
-    return 0;
+    return -1;
   }
   printf("Socket Créé\n");
 
@@ -26,7 +30,10 @@ int main(int argc, char *argv[])
   bind(dS, (struct sockaddr *)&ad, sizeof(ad));
   printf("Socket Nommé\n");
 
-  listen(dS, 7);
+  if (listen(dS, 7) < 0) {
+    perror("Problème au niveau du listen");
+    return -1;
+  }
   printf("Mode écoute\n");
 
   struct sockaddr_in aC;
@@ -35,6 +42,7 @@ int main(int argc, char *argv[])
   if (dSC1 < 0)
   {
     perror("Problème lors de l'acceptation du client 1");
+    return -1;
   }
   printf("Client 1 Connecté\n");
 
@@ -42,17 +50,32 @@ int main(int argc, char *argv[])
   if (dSC2 < 0)
   {
     perror("Problème lors de l'acceptation du client 2");
+    return -1;
   }
   printf("Client 2 Connecté\n");
 
   int taille = -1;
   while (1)
   {
+    // TODO: DEBUT
+    if (pthread_create(&thread, NULL, envoie, (void *) 0)){ //thread Client 1 vers Client 2
+      perror("creation threadGet erreur");
+			return EXIT_FAILURE;
+		}
+
+    // Gestion de la fin
+    if (pthread_join(thread, NULL)) {
+      perror("Erreur fermeture thread");
+      return -1;
+    }
+    pthread_cancel(thread);
+    // TODO: FIN
+
     // Réception du client 1
     if (recv(dSC1, &taille, sizeof(int), 0) < 0 || taille < 0)
     {
       perror("Problème de réception de taille depuis le serveur");
-      return 0;
+      return -1;
     }
     printf("Taille reçue : %d\n", taille - 1);
 
@@ -60,7 +83,7 @@ int main(int argc, char *argv[])
     if (recv(dSC1, msg, taille, 0) < 0)
     {
       perror("Problème de réception du message depuis le serveur");
-      return 0;
+      return -1;
     }
     printf("Message reçu : %s\n", msg);
 
@@ -68,13 +91,14 @@ int main(int argc, char *argv[])
     if (send(dSC2, &taille, sizeof(int), 0) < 0)
     {
       perror("Problème d'envoi de la taille depuis le serveur au client 2");
+      return -1;
     }
     printf("Taille envoyée au client 2\n");
 
     if (send(dSC2, msg, sizeof(char) * taille, 0) < 0)
     {
       perror("Problème d'envoi depuis le serveur au client 2");
-      return 0;
+      return -1;
     }
     printf("Message Envoyé au client 2\n");
   }
