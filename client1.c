@@ -34,6 +34,7 @@ void *envoieMsg(void * arg) {
 
 	} while (!strcmp(chaine, "fin"));
 	free(chaine);
+	int pthread_cancel(pthread_t thread_recu);
 	pthread_exit(NULL);
 }
 
@@ -60,6 +61,7 @@ void *recuMsg(void * arg) {
 
 		free(rep);
 	} while (!strcmp(rep, "fin"));
+	int pthread_cancel(pthread_t thread_envoie);
 	pthread_exit(NULL);
 }
 

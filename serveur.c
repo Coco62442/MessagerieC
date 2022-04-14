@@ -6,6 +6,76 @@
 
 // argv[1] = port
 
+void *client1To2(void * arg1, void * arg2) {
+	int dSC1 = (int) arg1;
+	int dSC2 = (int) arg2;
+	int taille_chaine;
+			
+	int error_recv1 = recv(dSC1, &taille_chaine, sizeof(int), 0);
+	if (error_recv1 < 0) {
+		perror("Erreur lors de la réception du message\n");
+		return 0;
+	}
+	printf("Message reçu : %d\n", taille_chaine) ;
+
+	int error_send1 = send(dSC2, &taille_chaine, sizeof(int), 0);
+	if (error_send1 < 0) {
+		perror("Le message n'a pas pu être envoyé\n");
+		return 0;
+	}
+	printf("Message Envoyé\n");
+
+	char *msg = malloc(sizeof(char)*taille_chaine);
+	int error_recv2 = recv(dSC1, msg, taille_chaine, 0);
+	if (error_recv2 < 0) {
+		perror("Erreur lors de la réception du message\n");
+		return 0;
+	}
+	printf("Message reçu : %s\n", msg) ;
+	
+	int error_send2 = send(dSC2, msg, sizeof(char)*taille_chaine, 0);
+	if (error_send2 < 0) {
+		perror("Le message n'a pas pu être envoyé\n");
+		return 0;
+	}
+	printf("Message Envoyé\n");
+}
+
+void *client2To1(void * arg1, void * arg2) {
+	int dSC1 = (int) arg1;
+	int dSC2 = (int) arg2;
+	int taille_chaine;
+			
+	int error_recv1 = recv(dSC2, &taille_chaine, sizeof(int), 0);
+	if (error_recv1 < 0) {
+		perror("Erreur lors de la réception test du message\n");
+		return 0;
+	}
+	printf("Message reçu : %d\n", taille_chaine) ;
+
+	int error_send1 = send(dSC1, &taille_chaine, sizeof(int), 0);
+	if (error_send1 < 0) {
+		perror("Le message n'a pas pu être envoyé\n");
+		return 0;
+	}
+	printf("Message Envoyé\n");
+
+	char *msg = malloc(sizeof(char)*taille_chaine);
+	int error_recv2 = recv(dSC2, msg, taille_chaine, 0);
+	if (error_recv2 < 0) {
+		perror("Erreur lors de la réception du message\n");
+		return 0;
+	}
+	printf("Message reçu : %s\n", msg) ;
+	
+	int error_send2 = send(dSC1, msg, sizeof(char)*taille_chaine, 0);
+	if (error_send2 < 0) {
+		perror("Le message n'a pas pu être envoyé\n");
+		return 0;
+	}
+	printf("Message Envoyé\n");
+}
+
 int main(int argc, char *argv[]) {
 
 	printf("Début programme\n");
@@ -38,36 +108,14 @@ int main(int argc, char *argv[]) {
 	}
 	printf("Client 2 Connecté\n");
 
-	int taille_chaine;
-			
-	int error_recv1 = recv(dSC1, &taille_chaine, sizeof(int), 0);
-	if (error_recv1 < 0) {
-		perror("Erreur lors de la réception du message\n");
-		return 0;
-	}
-	printf("Message reçu : %d\n", taille_chaine) ;
-
-	int error_send1 = send(dSC2, &taille_chaine, sizeof(int), 0);
-	if (error_send1 < 0) {
-		perror("Le message n'a pas pu être envoyé\n");
-		return 0;
-	}
-	printf("Message Envoyé\n");
-
-	char *msg = malloc(sizeof(char)*taille_chaine);
-	int error_recv2 = recv(dSC1, msg, taille_chaine, 0);
-	if (error_recv2 < 0) {
-		perror("Erreur lors de la réception du message\n");
-		return 0;
-	}
-	printf("Message reçu : %s\n", msg) ;
+	pthread_t thread_client1To2;
+	pthread_t thread_client2To1;
+	pthread_create(&thread_client1To2, NULL, client1To2, (void *) (int) dSC1, (void *) (int) dSC2);
+	pthread_create(&thread_client2To1, NULL, client2To1, (void *) (int) dSC2, (void *) (int) dSC1);
 	
-	int error_send2 = send(dSC2, msg, sizeof(char)*taille_chaine, 0);
-	if (error_send2 < 0) {
-		perror("Le message n'a pas pu être envoyé\n");
-		return 0;
-	}
-	printf("Message Envoyé\n");
+
+	pthread_join(thread_client1To2,0);
+	pthread_join(thread_client2To1,0);
 
 	shutdown(dSC1, 2) ;
 	shutdown(dSC2, 2) ;
