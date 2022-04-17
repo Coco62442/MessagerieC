@@ -11,15 +11,15 @@
 typedef struct Client Client;
 struct Client{
     int isOccupied;
-    //char * pseudo;
     long dSC;
 };
 
-//TODO: à retoucher
-/* - MAX_CLIENT = nombre maximum de client accepté sur le serveur
+/* 
+ * - MAX_CLIENT = nombre maximum de client accepté sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
- * - nbClient = nombre de clients actuellement connectés*/
+ * - nbClient = nombre de clients actuellement connectés
+*/
 #define MAX_CLIENT 5
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
@@ -46,15 +46,13 @@ int giveNumClient(){
  * et teste que tout se passe bien
  * Paramètres : int dS : expéditeur du message
  *              char * msg : message à envoyer
- * Retour : pas de retour
 */
 void sending(int dS, char * msg){
     int i;
     for (i = 0; i<MAX_CLIENT ; i++) {
-        /*On n'envoie pas au client qui a écrit le message*/
+        // On n'envoie pas au client qui a écrit le message
         if(tabClient[i].isOccupied && dS != tabClient[i].dSC){
-            int sendR = send(tabClient[i].dSC, msg, strlen(msg)+1, 0);
-            if (sendR == -1){ /*vérification de la valeur de retour*/
+            if (send(tabClient[i].dSC, msg, strlen(msg)+1, 0) == -1) {
                 perror("erreur au send");
                 exit(-1);
             }
@@ -67,14 +65,46 @@ void sending(int dS, char * msg){
  * Paramètres : int dS : la socket
  *              char * msg : message à recevoir
  *              ssize_t size : taille maximum du message à recevoir
- * Retour : pas de retour
 */
 void receiving(int dS, char * rep, ssize_t size){
-    int recvR = recv(dS, rep, size, 0);
-    if (recvR == -1){ /*vérification de la valeur de retour*/
+    if (recv(dS, rep, size, 0) == -1){
         perror("erreur au recv");
         exit(-1);
     }
+}
+
+/*
+ * Start routine de pthread_create()
+*/
+void * communication(void * clientParam){
+    int isEnd = 0;
+    int numClient = (long) clientParam;
+
+    while(!isEnd){
+        // Réception du message
+        char * msgReceived = (char *) malloc(sizeof(char)*100);
+        receiving(tabClient[numClient].dSC, msgReceived, sizeof(char)*100);
+        printf("\nMessage recu: %s \n", msgReceived);
+
+        // On verifie si le client veut terminer la communication
+        isEnd = endOfCommunication(msgReceived);
+
+        // Ajout du pseudo de l'expéditeur devant le message à envoyer
+        char * msgToSend = (char *) malloc(sizeof(char)*115);
+        strcat(msgToSend, msgReceived);
+
+        // Envoi du message aux autres clients
+        printf("Envoi du message aux %ld clients. \n", nbClient);
+        sending(tabClient[numClient].dSC, msgToSend);
+        
+    }
+
+    // Fermeture du socket client
+    nbClient = nbClient-1;
+    tabClient[numClient].isOccupied = 0;
+    close(tabClient[numClient].dSC);
+
+    return NULL;
 }
 
 
@@ -129,7 +159,7 @@ int main(int argc, char *argv[])
       // Acceptons une connexion
       struct sockaddr_in aC;
       socklen_t lg = sizeof(struct sockaddr_in);
-      dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+      dSC = accept(dS, (struct sockaddr *) &aC, &lg);
       if (dSC < 0)
       {
         perror("Problème lors de l'acceptation du client 1");
@@ -139,71 +169,21 @@ int main(int argc, char *argv[])
 
     }
 
+    // On enregistre la socket du client
     long numClient = giveNumClient();
-
-    /*On enregistre la socket du client*/
     tabClient[numClient].isOccupied = 1;
     tabClient[numClient].dSC = dSC;
 
 
-    /*_____________________ Communication _____________________*/
-    if(pthread_create(&tabThread[numClient],NULL,broadcast,(void *)numClient) == -1){
+    //_____________________ Communication _____________________
+    if(pthread_create(&tabThread[numClient], NULL, communication, (void *) numClient) == -1){
         perror("erreur thread create");
     }
 
     /*On a un client en plus sur le serveur, on incrémente*/
     nbClient += 1;
-    
     printf("Clients connectés : %d\n", nbClient);
-
-
-    // // TODO: DEBUT
-    // if (pthread_create(&thread, NULL, envoie, (void *) 0)){ //thread Client 1 vers Client 2
-    //   perror("creation threadGet erreur");
-		// 	return EXIT_FAILURE;
-		// }
-
-    // // Gestion de la fin
-    // if (pthread_join(thread, NULL)) {
-    //   perror("Erreur fermeture thread");
-    //   return -1;
-    // }
-    // pthread_cancel(thread);
-    // // TODO: FIN
-
-    // // Réception du client 1
-    // if (recv(dSC1, &taille, sizeof(int), 0) < 0 || taille < 0)
-    // {
-    //   perror("Problème de réception de taille depuis le serveur");
-    //   return -1;
-    // }
-    // printf("Taille reçue : %d\n", taille - 1);
-
-    // char *msg = malloc(sizeof(char) * taille);
-    // if (recv(dSC1, msg, taille, 0) < 0)
-    // {
-    //   perror("Problème de réception du message depuis le serveur");
-    //   return -1;
-    // }
-    // printf("Message reçu : %s\n", msg);
-
-    // // Envoi au client 2
-    // if (send(dSC2, &taille, sizeof(int), 0) < 0)
-    // {
-    //   perror("Problème d'envoi de la taille depuis le serveur au client 2");
-    //   return -1;
-    // }
-    // printf("Taille envoyée au client 2\n");
-
-    // if (send(dSC2, msg, sizeof(char) * taille, 0) < 0)
-    // {
-    //   perror("Problème d'envoi depuis le serveur au client 2");
-    //   return -1;
-    // }
-    // printf("Message Envoyé au client 2\n");
   }
-  // shutdown(dSC1, 2);
-  // shutdown(dSC2, 2);
   shutdown(dS, 2);
   printf("Fin du programme\n");
 }
