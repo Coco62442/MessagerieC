@@ -11,7 +11,7 @@
 void *envoieMsg(void * arg) {
 	int dS = (int) arg;
 	char * chaine = malloc(200*sizeof(char));
-	do {
+	while (1) {
 		// Message a envoyé
 
 		printf("Entrer votre message\n");
@@ -32,7 +32,7 @@ void *envoieMsg(void * arg) {
 		};
 		printf("Message Envoyé \n");
 
-	} while (!strcmp(chaine, "fin"));
+	};
 	free(chaine);
 	int pthread_cancel(pthread_t thread_recu);
 	pthread_exit(NULL);
@@ -43,7 +43,7 @@ void *envoieMsg(void * arg) {
 void *recuMsg(void * arg) {
 	int dS = (int) arg;	
 	char * rep;
-	do {
+	while (1) {
 		int tailleChaineRecu;
 		int error_recv1 = recv(dS, &tailleChaineRecu, sizeof(int), 0);
 		if (error_recv1 < 0) {
@@ -59,8 +59,9 @@ void *recuMsg(void * arg) {
 		};
 		printf("Réponse reçue : %s\n", rep) ;
 
-		free(rep);
-	} while (!strcmp(rep, "fin"));
+		
+	};
+	free(rep);
 	int pthread_cancel(pthread_t thread_envoie);
 	pthread_exit(NULL);
 }
