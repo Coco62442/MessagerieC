@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         perror("Problème lors de l'acceptation du client 1");
         return -1;
       }
-      printf("Client %d connecté\n", nbClient);
+      printf("Client %ld connecté\n", nbClient);
     }
 
     // On enregistre la socket du client
@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 
     // On a un client en plus sur le serveur, on incrémente
     nbClient += 1;
-    printf("Clients connectés : %d\n", nbClient);
+    printf("Clients connectés : %ld\n", nbClient);
   }
   shutdown(dS, 2);
   printf("Fin du programme\n");
