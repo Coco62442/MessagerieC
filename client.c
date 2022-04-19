@@ -11,6 +11,8 @@
 void *envoieMsg(void * arg) {
 	int dS = (int) arg;
 	char * chaine = malloc(200*sizeof(char));
+	char * fin = malloc(3*sizeof(char));
+	fin = "fin";
 	while (1) {
 		// Message a envoyé
 
@@ -30,6 +32,12 @@ void *envoieMsg(void * arg) {
 		if (error_send2 < 0) {
 			perror("Erreur lors de l\'envoie du message au serveur");
 		};
+
+		if(strcmp(fin,chaine) == 0){
+			printf("Arrêt du client \n");
+			break;
+		}
+
 		printf("Message Envoyé \n");
 
 	};

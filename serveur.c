@@ -22,7 +22,7 @@ void *client1To2(void * arg) {
 			perror("Erreur lors de la réception du message\n");
 			return 0;
 		}
-		printf("Message reçu : %d\n", taille_chaine) ;
+		printf("Message reçu 1 to 2 taille: %d\n", taille_chaine) ;
 
 		int error_send1 = send(dSC2, &taille_chaine, sizeof(int), 0);
 		if (error_send1 < 0) {
@@ -37,7 +37,7 @@ void *client1To2(void * arg) {
 			perror("Erreur lors de la réception du message\n");
 			return 0;
 		}
-		printf("Message reçu : %s\n", msg) ;
+		printf("Message reçu 1 to 2 msg: %s\n", msg) ;
 		
 		int error_send2 = send(dSC2, msg, sizeof(char)*taille_chaine, 0);
 		if (error_send2 < 0) {
@@ -54,14 +54,32 @@ void *client2To1(void * arg) {
 	int dSC1 = ((struct args*)arg)->adrC1;
 	int dSC2 = ((struct args*)arg)->adrC2;
 	int taille_chaine;
+	char * fin = malloc(3*sizeof(char));
+	fin = "fin";
 	while (1) {
+		// Reception de la taille du message
 		int error_recv1 = recv(dSC2, &taille_chaine, sizeof(int), 0);
 		if (error_recv1 < 0) {
 			perror("Erreur lors de la réception test du message\n");
 			return 0;
 		}
-		printf("Message reçu : %d\n", taille_chaine) ;
+		printf("Message reçu 2 to 1 taille: %d\n", taille_chaine) ;
 
+		// Reception du message
+		char *msg = malloc(sizeof(char)*taille_chaine);
+		int error_recv2 = recv(dSC2, msg, taille_chaine, 0);
+		if (error_recv2 < 0) {
+			perror("Erreur lors de la réception du message\n");
+			return 0;
+		}
+		printf("Message reçu 2 to 1 msg: %s\n", msg) ;
+
+		if(strcmp(fin,msg) == 0){
+			printf("Arrêt du client 1 \n");
+			break;
+		}
+
+		// Envoie de la taille du message
 		int error_send1 = send(dSC1, &taille_chaine, sizeof(int), 0);
 		if (error_send1 < 0) {
 			perror("Le message n'a pas pu être envoyé\n");
@@ -69,14 +87,7 @@ void *client2To1(void * arg) {
 		}
 		printf("Message Envoyé\n");
 
-		char *msg = malloc(sizeof(char)*taille_chaine);
-		int error_recv2 = recv(dSC2, msg, taille_chaine, 0);
-		if (error_recv2 < 0) {
-			perror("Erreur lors de la réception du message\n");
-			return 0;
-		}
-		printf("Message reçu : %s\n", msg) ;
-		
+		// Envoie du message
 		int error_send2 = send(dSC1, msg, sizeof(char)*taille_chaine, 0);
 		if (error_send2 < 0) {
 			perror("Le message n'a pas pu être envoyé\n");
