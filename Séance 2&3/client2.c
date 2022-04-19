@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
     }
     printf("Taille reçue : %d\n", taille - 1);
 
-    char * buffer = malloc(sizeof(char) * taille);
+    char *buffer = malloc(sizeof(char) * taille);
     if (recv(dS, buffer, sizeof(char) * taille, 0) < 0)
     {
       perror("Problème de réception du message client 2");
