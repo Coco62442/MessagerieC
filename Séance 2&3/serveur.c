@@ -17,7 +17,7 @@ struct Client
 };
 
 /*
- * - MAX_CLIENT = nombre maximum de client accepté sur le serveur
+ * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
@@ -30,7 +30,7 @@ long nbClient = 0;
 /*
  * Fonctions pour gérer les indices du tableaux de clients
  * Retour : un entier, indice du premier emplacement disponible
- *          -1 si tout les emplecements sont occupés.
+ *          -1 si tout les emplacements sont occupés.
  */
 int giveNumClient()
 {
@@ -47,7 +47,7 @@ int giveNumClient()
 }
 
 /*
- * Envoi un message à toutes les sockets présentent dans le tableau des clients
+ * Envoie un message à toutes les sockets présentes dans le tableau des clients
  * et teste que tout se passe bien
  * Paramètres : int dS : expéditeur du message
  *              char * msg : message à envoyer
@@ -211,15 +211,15 @@ int main(int argc, char *argv[])
     tabClient[numClient].pseudo = (char *) malloc(sizeof(char)*12);
     strcpy(tabClient[numClient].pseudo,pseudo);
 
-    // // On envoi un message pour avertir les autres clients de l'arriver du nouveau client
-    // strcat(pseudo," à rejoint la communication\n");
+    // // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+    // strcat(pseudo," a rejoint la communication\n");
     // sending(dSC, pseudo);
     // free(pseudo);
 
     //_____________________ Communication _____________________
     if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
     {
-      perror("erreur thread create");
+      perror("Erreur thread create");
     }
 
     // On a un client en plus sur le serveur, on incrémente

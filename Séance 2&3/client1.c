@@ -53,6 +53,7 @@ int endOfCommunication(char *msg)
   return 0;
 }
 
+
 // argv[1] = adresse ip
 // argv[2] = port
 int main(int argc, char *argv[])
@@ -63,14 +64,17 @@ int main(int argc, char *argv[])
     return -1;
   }
   printf("Début programme\n");
+
+  // Création de la socket
   int dS = socket(PF_INET, SOCK_STREAM, 0);
   if (dS == -1)
   {
     perror("Problème de création de socket client");
-    return 0;
+    return -1;
   }
   printf("Socket Créé\n");
 
+  // Nommage de la socket
   struct sockaddr_in aS;
   aS.sin_family = AF_INET;
   inet_pton(AF_INET, argv[1], &(aS.sin_addr));
@@ -82,7 +86,7 @@ int main(int argc, char *argv[])
   }
   printf("Socket Connecté\n");
 
-  char *buffer = (char *)malloc(MAX_LENGTH);
+  char *buffer = (char *) malloc(MAX_LENGTH);
   int taille = 0;
   while (1)
   {
@@ -94,14 +98,14 @@ int main(int argc, char *argv[])
     if (send(dS, &taille, sizeof(int), 0) < 0)
     {
       perror("Problème d'envoi de la taille");
-      return 0;
+      return -1;
     }
     printf("Taille Envoyée \n");
 
     if (send(dS, buffer, taille, 0) < 0)
     {
       perror("Problème d'envoi du message");
-      return 0;
+      return -1;
     }
     printf("Message Envoyé \n");
   }
