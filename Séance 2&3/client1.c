@@ -6,12 +6,62 @@
 
 #define MAX_LENGTH 10
 
+/*
+ * Envoi un message à une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à envoyer
+ * Retour : pas de retour
+ * */
+void sending(int dS, char *msg)
+{
+  if (send(dS, msg, strlen(msg) + 1, 0) == -1)
+  {
+    perror("Erreur au send");
+    exit(-1);
+  }
+}
+
+/*
+ * Receptionne un message d'une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à recevoir
+ *              ssize_t size : taille maximum du message à recevoir
+ * Retour : pas de retour
+ * */
+void receiving(int dS, char *rep, ssize_t size)
+{
+  int recvR = recv(dS, rep, size, 0);
+  if (recvR == -1)
+  { /*vérification de la valeur de retour*/
+    printf("** fin de la communication **\n");
+    exit(-1);
+  }
+}
+
+/*
+ * Vérifie si un client souhaite quitter la communication
+ * Paramètres : char ** msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+ */
+int endOfCommunication(char *msg)
+{
+  if (strcmp(msg, "fin\n") == 0)
+  {
+    strcpy(msg, "** a quitté la communication **\n");
+    return 1;
+  }
+  return 0;
+}
+
 // argv[1] = adresse ip
 // argv[2] = port
-
 int main(int argc, char *argv[])
 {
-
+  if (argc < 3)
+  {
+    perror("Erreur : Lancez avec ./client [votre_ip] [votre_port] ");
+    return -1;
+  }
   printf("Début programme\n");
   int dS = socket(PF_INET, SOCK_STREAM, 0);
   if (dS == -1)

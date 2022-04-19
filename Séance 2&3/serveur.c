@@ -109,26 +109,26 @@ void *communication(void *clientParam)
 
   while (!isEnd)
   {
-    /*Réception du message*/
+    // Réception du message
     char *msgReceived = (char *)malloc(sizeof(char) * 100);
     receiving(tabClient[numClient].dSC, msgReceived, sizeof(char) * 100);
     printf("\nMessage recu: %s \n", msgReceived);
 
-    /*On verifie si le client veut terminer la communication*/
+    // On verifie si le client veut terminer la communication
     isEnd = endOfCommunication(msgReceived);
 
-    /*Ajout du pseudo de l'expéditeur devant le message à envoyer*/
+    // Ajout du pseudo de l'expéditeur devant le message à envoyer
     char *msgToSend = (char *)malloc(sizeof(char) * 115);
     strcat(msgToSend, pseudoSender);
     strcat(msgToSend, " : ");
     strcat(msgToSend, msgReceived);
 
-    /*Envoi du message aux autres clients*/
+    // Envoi du message aux autres clients
     printf("Envoi du message aux %ld clients. \n", nbClient);
     sending(tabClient[numClient].dSC, msgToSend);
   }
 
-  /*Fermeture du socket client*/
+  // Fermeture du socket client
   nbClient = nbClient - 1;
   tabClient[numClient].isOccupied = 0;
   close(tabClient[numClient].dSC);
