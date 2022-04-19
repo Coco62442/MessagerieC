@@ -8,7 +8,7 @@
 // argv[1] = adresse ip
 // argv[2] = port
 
-void *envoieMsg(void * arg) {
+void *envoieMsg(void * arg) { 
 	int dS = (int) arg;
 	char * chaine = malloc(200*sizeof(char));
 	while (1) {
