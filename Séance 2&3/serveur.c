@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
   // Verification du nombre de paramètres
   if (argc < 2)
   {
-    perror("Erreur : Lancez avec ./serveur <votre_port> ");
+    perror("Erreur : Lancez avec ./serveur [votre_port] ");
     return -1; // TODO: ou exit(-1); ?
   }
   printf("Début programme\n");

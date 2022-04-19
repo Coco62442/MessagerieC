@@ -7,11 +7,10 @@
 #define MAX_LENGTH 10
 
 /*
- * Envoi un message à une socket et teste que tout se passe bien
+ * Envoie un message à une socket et teste que tout se passe bien
  * Paramètres : int dS : la socket
  *              char * msg : message à envoyer
- * Retour : pas de retour
- * */
+*/
 void sending(int dS, char *msg)
 {
   if (send(dS, msg, strlen(msg) + 1, 0) == -1)
@@ -26,13 +25,11 @@ void sending(int dS, char *msg)
  * Paramètres : int dS : la socket
  *              char * msg : message à recevoir
  *              ssize_t size : taille maximum du message à recevoir
- * Retour : pas de retour
- * */
+*/
 void receiving(int dS, char *rep, ssize_t size)
 {
-  int recvR = recv(dS, rep, size, 0);
-  if (recvR == -1)
-  { /*vérification de la valeur de retour*/
+  if (recv(dS, rep, size, 0) == -1)
+  {
     printf("** fin de la communication **\n");
     exit(-1);
   }
