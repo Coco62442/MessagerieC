@@ -183,9 +183,10 @@ int main(int argc, char *argv[])
     {
         int dSC;
         // Vérifions si on peut accepter un client
-        if (nbClient < MAX_CLIENT)
+        if (nbClient > MAX_CLIENT)
         {
-            // TODO: envoyer msg
+            // Connexion rapide pour expliquer la raison du refus
+            //TODO:
         }
         else
         {
