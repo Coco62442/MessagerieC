@@ -24,7 +24,7 @@ void sending(int dS, char *msg)
 }
 
 // Fonction pour le thread d'envoi
-void *sendingAux(void *dSparam)
+void *sendingForThread(void *dSparam)
 {
   int dS = (long)dSparam;
   while (!isEnd)
@@ -61,7 +61,7 @@ void receiving(int dS, char *rep, ssize_t size)
 }
 
 // Fonction pour le thread de réception
-void *receivingAux(void *dSparam)
+void *receivingForThread(void *dSparam)
 {
   int dS = (long)dSparam;
   while (!isEnd)
@@ -135,13 +135,13 @@ int main(int argc, char *argv[])
   pthread_t thread_sendind;
   pthread_t thread_receiving;
 
-  if (pthread_create(&thread_sendind, NULL, sendingAux, (void *)dS) < 0)
+  if (pthread_create(&thread_sendind, NULL, sendingForThread, (void *)dS) < 0)
   {
     perror("Erreur de création de thread d'envoi client");
     exit(-1);
   }
 
-  if (pthread_create(&thread_receiving, NULL, receivingAux, (void *)dS) < 0)
+  if (pthread_create(&thread_receiving, NULL, receivingForThread, (void *)dS) < 0)
   {
     perror("Erreur de création de thread réception client");
     exit(-1);
