@@ -186,7 +186,6 @@ int main(int argc, char *argv[])
     // Vérifions si on peut accepter un client
     if (nbClient < MAX_CLIENT)
     {
-
       // Acceptons une connexion
       struct sockaddr_in aC;
       socklen_t lg = sizeof(struct sockaddr_in);
@@ -211,10 +210,10 @@ int main(int argc, char *argv[])
     tabClient[numClient].pseudo = (char *) malloc(sizeof(char)*12);
     strcpy(tabClient[numClient].pseudo,pseudo);
 
-    // // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-    // strcat(pseudo," a rejoint la communication\n");
-    // sending(dSC, pseudo);
-    // free(pseudo);
+    // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+    strcat(pseudo," a rejoint la communication\n");
+    sending(dSC, pseudo);
+    free(pseudo);
 
     //_____________________ Communication _____________________
     if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
