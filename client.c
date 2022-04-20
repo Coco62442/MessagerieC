@@ -10,6 +10,21 @@
 int isEnd = 0;
 
 /*
+ * Vérifie si un client souhaite quitter la communication
+ * Paramètres : char ** msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+ */
+int endOfCommunication(char *msg)
+{
+  if (strcmp(msg, "fin\n") == 0)
+  {
+    strcpy(msg, "** a quitté la communication **\n");
+    return 1;
+  }
+  return 0;
+}
+
+/*
  * Envoie un message à une socket et teste que tout se passe bien
  * Paramètres : int dS : la socket
  *              char * msg : message à envoyer
@@ -23,13 +38,15 @@ void sending(int dS, char *msg)
   }
 }
 
-// Fonction pour le thread d'envoi
+/*
+* Fonction pour le thread d'envoi
+*/
 void *sendingForThread(void *dSparam)
 {
   int dS = (long)dSparam;
   while (!isEnd)
   {
-    /*Saisie du message au clavier*/
+    // Saisie du message au clavier
     char *m = (char *)malloc(sizeof(char) * 100);
     printf(">");
     fgets(m, 100, stdin);
@@ -41,7 +58,7 @@ void *sendingForThread(void *dSparam)
     sending(dS, m);
     free(m);
   }
-  close(dS);
+  shutdown(dS, 2);
   return NULL;
 }
 
@@ -71,23 +88,8 @@ void *receivingForThread(void *dSparam)
     printf(">%s", r);
     free(r);
   }
-  close(dS);
+  shutdown(dS, 2);
   return NULL;
-}
-
-/*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char ** msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
- */
-int endOfCommunication(char *msg)
-{
-  if (strcmp(msg, "fin\n") == 0)
-  {
-    strcpy(msg, "** a quitté la communication **\n");
-    return 1;
-  }
-  return 0;
 }
 
 // argv[1] = adresse ip
@@ -97,7 +99,7 @@ int main(int argc, char *argv[])
   if (argc < 3)
   {
     perror("Erreur : Lancez avec ./client [votre_ip] [votre_port] ");
-    return -1;
+    exit(-1);
   }
   printf("Début programme\n");
 
@@ -106,7 +108,7 @@ int main(int argc, char *argv[])
   if (dS == -1)
   {
     perror("Problème de création de socket client");
-    return -1;
+    exit(-1);
   }
   printf("Socket Créé\n");
 
@@ -147,33 +149,8 @@ int main(int argc, char *argv[])
     exit(-1);
   }
 
+  // Appels bloquants
   pthread_join(thread_sendind, NULL);
   pthread_join(thread_receiving, NULL);
-
-  // char *buffer = (char *)malloc(MAX_LENGTH);
-  // int taille = 0;
-  // while (1)
-  // {
-  //   printf("Entrer un message de taille max %d: \n", MAX_LENGTH - 1);
-  //   fgets(buffer, MAX_LENGTH, stdin);
-  //   taille = strlen(buffer);
-  //   printf("Taille du message : %d\n", taille - 1);
-
-  //   if (send(dS, &taille, sizeof(int), 0) < 0)
-  //   {
-  //     perror("Problème d'envoi de la taille");
-  //     return -1;
-  //   }
-  //   printf("Taille envoyée \n");
-
-  //   if (send(dS, buffer, taille, 0) < 0)
-  //   {
-  //     perror("Problème d'envoi du message");
-  //     return -1;
-  //   }
-  //   printf("Message Envoyé \n");
-  // }
-  // free(buffer);
-  // shutdown(dS, 2);
   printf("Fin du programme\n");
 }

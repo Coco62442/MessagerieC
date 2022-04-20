@@ -43,7 +43,7 @@ int giveNumClient()
     }
     i += 1;
   }
-  return -1;
+  exit(-1);
 }
 
 /*
@@ -131,7 +131,7 @@ void *communication(void *clientParam)
   // Fermeture du socket client
   nbClient = nbClient - 1;
   tabClient[numClient].isOccupied = 0;
-  close(tabClient[numClient].dSC);
+  shutdown(tabClient[numClient].dSC, 2);
 
   return NULL;
 }
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
   if (argc < 2)
   {
     perror("Erreur : Lancez avec ./serveur [votre_port] ");
-    return -1; // TODO: ou exit(-1); ?
+    exit(-1);
   }
   printf("Début programme\n");
 
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
   if (dS < 0)
   {
     perror("Problème de création de socket serveur");
-    return -1;
+    exit(-1);
   }
   printf("Socket Créé\n");
 
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
   if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
   {
     perror("Erreur lors du nommage de la socket");
-    return -1;
+    exit(-1);
   }
   printf("Socket nommée\n");
 
@@ -175,11 +175,10 @@ int main(int argc, char *argv[])
   if (listen(dS, 7) < 0)
   {
     perror("Problème au niveau du listen");
-    return -1;
+    exit(-1);
   }
   printf("Mode écoute\n");
 
-  int taille = -1;
   while (1)
   {
     int dSC;
@@ -193,7 +192,7 @@ int main(int argc, char *argv[])
       if (dSC < 0)
       {
         perror("Problème lors de l'acceptation du client 1");
-        return -1;
+        exit(-1);
       }
       printf("Client %ld connecté\n", nbClient);
     }
