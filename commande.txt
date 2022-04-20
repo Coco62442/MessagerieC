@@ -1,0 +1,10 @@
+-------Commande disponible :
+
+Afficher l'aide :
+'!aide'
+
+Envoyer un message a un ami grâce à son nom d'utilisateur :
+'@nomUtilisateur message'
+
+Envoyer un message à tout les utilisateurs connectés :
+'message'

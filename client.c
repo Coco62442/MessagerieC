@@ -5,101 +5,153 @@
 #include <string.h>
 #include <pthread.h>
 
+#define MAX_LENGTH 10
+
+int isEnd = 0;
+
+/*
+ * Vérifie si un client souhaite quitter la communication
+ * Paramètres : char ** msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+ */
+int endOfCommunication(char *msg)
+{
+  if (strcmp(msg, "fin\n") == 0)
+  {
+    strcpy(msg, "** a quitté la communication **\n");
+    return 1;
+  }
+  return 0;
+}
+
+/*
+ * Envoie un message à une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à envoyer
+ */
+void sending(int dS, char *msg)
+{
+  if (send(dS, msg, strlen(msg) + 1, 0) == -1)
+  {
+    perror("Erreur au send");
+    exit(-1);
+  }
+}
+
+/*
+* Fonction pour le thread d'envoi
+*/
+void *sendingForThread(void *dSparam)
+{
+  int dS = (long)dSparam;
+  while (!isEnd)
+  {
+    // Saisie du message au clavier
+    char *m = (char *)malloc(sizeof(char) * 100);
+    printf(">");
+    fgets(m, 100, stdin);
+
+    // On vérifie si le client veut quitter la communication
+    isEnd = endOfCommunication(m);
+
+    // Envoi
+    sending(dS, m);
+    free(m);
+  }
+  shutdown(dS, 2);
+  return NULL;
+}
+
+/*
+ * Receptionne un message d'une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à recevoir
+ *              ssize_t size : taille maximum du message à recevoir
+ */
+void receiving(int dS, char *rep, ssize_t size)
+{
+  if (recv(dS, rep, size, 0) == -1)
+  {
+    printf("** fin de la communication **\n");
+    exit(-1);
+  }
+}
+
+// Fonction pour le thread de réception
+void *receivingForThread(void *dSparam)
+{
+  int dS = (long)dSparam;
+  while (!isEnd)
+  {
+    char *r = (char *)malloc(sizeof(char) * 100);
+    receiving(dS, r, sizeof(char) * 100);
+    printf(">%s", r);
+    free(r);
+  }
+  shutdown(dS, 2);
+  return NULL;
+}
+
 // argv[1] = adresse ip
 // argv[2] = port
+int main(int argc, char *argv[])
+{
+  if (argc < 3)
+  {
+    perror("Erreur : Lancez avec ./client [votre_ip] [votre_port] ");
+    exit(-1);
+  }
+  printf("Début programme\n");
 
-void *envoieMsg(void * arg) {
-	int dS = (int) arg;
-	char * chaine = malloc(200*sizeof(char));
-	char * fin = malloc(3*sizeof(char));
-	fin = "fin";
-	while (1) {
-		// Message a envoyé
+  // Création de la socket
+  int dS = socket(PF_INET, SOCK_STREAM, 0);
+  if (dS == -1)
+  {
+    perror("Problème de création de socket client");
+    exit(-1);
+  }
+  printf("Socket Créé\n");
 
-		printf("Entrer votre message\n");
-		fgets(chaine, 200, stdin);
+  // Nommage de la socket
+  struct sockaddr_in aS;
+  aS.sin_family = AF_INET;
+  inet_pton(AF_INET, argv[1], &(aS.sin_addr));
+  aS.sin_port = htons(atoi(argv[2]));
+  socklen_t lgA = sizeof(struct sockaddr_in);
 
-		int tailleChaineEnvoie = strlen(chaine);
-			
-		int error_send = send(dS, &tailleChaineEnvoie, sizeof(int) , 0) ;
-		if (error_send < 0) {
-			perror("Erreur lors de l\'envoie du message au serveur");
-		};
-		printf("Message Envoyé \n");
+  // Envoi d'une demande de connexion
+  if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
+  {
+    perror("Problème de connexion au serveur");
+	exit(-1);
+  }
+  printf("Socket connectée\n");
 
+  // Saisie du pseudo du client au clavier
+  char *myPseudo = (char *)malloc(sizeof(char) * 12);
+  printf("Votre pseudo (maximum 12 caractères): ");
+  fgets(myPseudo, 12, stdin);
+  sending(dS, myPseudo);
 
-		int error_send2 = send(dS, chaine, strlen(chaine) + 1 , 0) ;
-		if (error_send2 < 0) {
-			perror("Erreur lors de l\'envoie du message au serveur");
-		};
+  //_____________________ Communication _____________________
+  // Création des threads
+  pthread_t thread_sendind;
+  pthread_t thread_receiving;
 
-		if(strcmp(fin,chaine) == 0){
-			printf("Arrêt du client \n");
-			break;
-		}
+  if (pthread_create(&thread_sendind, NULL, sendingForThread, (void *)dS) < 0)
+  {
+    perror("Erreur de création de thread d'envoi client");
+    exit(-1);
+  }
 
-		printf("Message Envoyé \n");
+  if (pthread_create(&thread_receiving, NULL, receivingForThread, (void *)dS) < 0)
+  {
+    perror("Erreur de création de thread réception client");
+    exit(-1);
+  }
 
-	};
-	free(chaine);
-	int pthread_cancel(pthread_t thread_recu);
-	pthread_exit(NULL);
-}
-
-
-
-void *recuMsg(void * arg) {
-	int dS = (int) arg;	
-	char * rep;
-	while (1) {
-		int tailleChaineRecu;
-		int error_recv1 = recv(dS, &tailleChaineRecu, sizeof(int), 0);
-		if (error_recv1 < 0) {
-			perror("Erreur le message n\'a pas été reçu");
-		};
-		printf("Réponse reçue : %d\n", tailleChaineRecu);
-
-
-		rep = malloc(sizeof(char)*tailleChaineRecu);
-		int error_recv2 = recv(dS, rep, sizeof(char)*tailleChaineRecu, 0);
-		if (error_recv2 < 0) {
-			perror("Erreur le message n\'a pas été reçu");
-		};
-		printf("Réponse reçue : %s\n", rep) ;
-
-		
-	};
-	free(rep);
-	int pthread_cancel(pthread_t thread_envoie);
-	pthread_exit(NULL);
-}
-
-int main(int argc, char *argv[]) {
-	printf("Début programme\n");
-	int dS = socket(PF_INET, SOCK_STREAM, 0);
-	printf("Socket Créé\n");
-
-	struct sockaddr_in aS;
-	aS.sin_family = AF_INET;
-	inet_pton(AF_INET,argv[1],&(aS.sin_addr));
-	aS.sin_port = htons(atoi(argv[2])) ;
-	socklen_t lgA = sizeof(struct sockaddr_in) ;
-	int error_connect = connect(dS, (struct sockaddr *) &aS, lgA);
-	if (error_connect < 0) {
-		perror("Erreur lors de la connection au serveur\nVérifier l\'adresse IP fournie");
-		return 0;
-	};
-	printf("Socket Connecté\n");
-
-	pthread_t thread_envoie;
-	pthread_t thread_recu;
-	pthread_create(&thread_envoie, NULL, envoieMsg, (void *) (int) dS);
-	pthread_create(&thread_recu, NULL, recuMsg, (void *) (int) dS);
-	
-
-	pthread_join(thread_envoie,0);
-	pthread_join(thread_recu,0);
-	
-	printf("Fin du programme\n");
-	return 0;
+  // Appels bloquants
+  pthread_join(thread_sendind, NULL);
+  pthread_join(thread_receiving, NULL);
+  printf("Fin du programme\n");
 }
