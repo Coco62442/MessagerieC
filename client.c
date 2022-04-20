@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
   if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
   {
     perror("Problème de connexion au serveur");
+    exit(-1);
   }
   printf("Socket connectée\n");
 

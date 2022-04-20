@@ -11,9 +11,9 @@
 typedef struct Client Client;
 struct Client
 {
-  int isOccupied;
-  long dSC;
-  char *pseudo;
+    int isOccupied;
+    long dSC;
+    char *pseudo;
 };
 
 /*
@@ -34,16 +34,16 @@ long nbClient = 0;
  */
 int giveNumClient()
 {
-  int i = 0;
-  while (i < MAX_CLIENT)
-  {
-    if (!tabClient[i].isOccupied)
+    int i = 0;
+    while (i < MAX_CLIENT)
     {
-      return i;
+        if (!tabClient[i].isOccupied)
+        {
+            return i;
+        }
+        i += 1;
     }
-    i += 1;
-  }
-  exit(-1);
+    exit(-1);
 }
 
 /*
@@ -54,19 +54,19 @@ int giveNumClient()
  */
 void sending(int dS, char *msg)
 {
-  int i;
-  for (i = 0; i < MAX_CLIENT; i++)
-  {
-    // On n'envoie pas au client qui a écrit le message
-    if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
+    int i;
+    for (i = 0; i < MAX_CLIENT; i++)
     {
-      if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
-      {
-        perror("Erreur au send");
-        exit(-1);
-      }
+        // On n'envoie pas au client qui a écrit le message
+        if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
+        {
+            if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
+            {
+                perror("Erreur au send");
+                exit(-1);
+            }
+        }
     }
-  }
 }
 
 /*
@@ -77,11 +77,11 @@ void sending(int dS, char *msg)
  */
 void receiving(int dS, char *rep, ssize_t size)
 {
-  if (recv(dS, rep, size, 0) == -1)
-  {
-    perror("Erreur au recv");
-    exit(-1);
-  }
+    if (recv(dS, rep, size, 0) == -1)
+    {
+        perror("Erreur au recv");
+        exit(-1);
+    }
 }
 
 /*
@@ -91,11 +91,11 @@ void receiving(int dS, char *rep, ssize_t size)
  */
 int endOfCommunication(char *msg)
 {
-  if (strcmp(msg, "** a quitté la communication **\n") == 0)
-  {
-    return 1;
-  }
-  return 0;
+    if (strcmp(msg, "** a quitté la communication **\n") == 0)
+    {
+        return 1;
+    }
+    return 0;
 }
 
 /*
@@ -103,37 +103,37 @@ int endOfCommunication(char *msg)
  */
 void *communication(void *clientParam)
 {
-  int isEnd = 0;
-  int numClient = (long)clientParam;
-  char *pseudoSender = tabClient[numClient].pseudo;
+    int isEnd = 0;
+    int numClient = (long)clientParam;
+    char *pseudoSender = tabClient[numClient].pseudo;
 
-  while (!isEnd)
-  {
-    // Réception du message
-    char *msgReceived = (char *)malloc(sizeof(char) * 100);
-    receiving(tabClient[numClient].dSC, msgReceived, sizeof(char) * 100);
-    printf("\nMessage recu: %s \n", msgReceived);
+    while (!isEnd)
+    {
+        // Réception du message
+        char *msgReceived = (char *)malloc(sizeof(char) * 100);
+        receiving(tabClient[numClient].dSC, msgReceived, sizeof(char) * 100);
+        printf("\nMessage recu: %s \n", msgReceived);
 
-    // On verifie si le client veut terminer la communication
-    isEnd = endOfCommunication(msgReceived);
+        // On verifie si le client veut terminer la communication
+        isEnd = endOfCommunication(msgReceived);
 
-    // Ajout du pseudo de l'expéditeur devant le message à envoyer
-    char *msgToSend = (char *)malloc(sizeof(char) * 115);
-    strcat(msgToSend, pseudoSender);
-    strcat(msgToSend, " : ");
-    strcat(msgToSend, msgReceived);
+        // Ajout du pseudo de l'expéditeur devant le message à envoyer
+        char *msgToSend = (char *)malloc(sizeof(char) * 115);
+        strcat(msgToSend, pseudoSender);
+        strcat(msgToSend, " : ");
+        strcat(msgToSend, msgReceived);
 
-    // Envoi du message aux autres clients
-    printf("Envoi du message aux %ld clients. \n", nbClient);
-    sending(tabClient[numClient].dSC, msgToSend);
-  }
+        // Envoi du message aux autres clients
+        printf("Envoi du message aux %ld clients. \n", nbClient);
+        sending(tabClient[numClient].dSC, msgToSend);
+    }
 
-  // Fermeture du socket client
-  nbClient = nbClient - 1;
-  tabClient[numClient].isOccupied = 0;
-  shutdown(tabClient[numClient].dSC, 2);
+    // Fermeture du socket client
+    nbClient = nbClient - 1;
+    tabClient[numClient].isOccupied = 0;
+    shutdown(tabClient[numClient].dSC, 2);
 
-  return NULL;
+    return NULL;
 }
 
 /*
@@ -142,88 +142,92 @@ void *communication(void *clientParam)
 // argv[1] = port
 int main(int argc, char *argv[])
 {
-  // Verification du nombre de paramètres
-  if (argc < 2)
-  {
-    perror("Erreur : Lancez avec ./serveur [votre_port] ");
-    exit(-1);
-  }
-  printf("Début programme\n");
-
-  // Création de la socket
-  int dS = socket(PF_INET, SOCK_STREAM, 0);
-  if (dS < 0)
-  {
-    perror("Problème de création de socket serveur");
-    exit(-1);
-  }
-  printf("Socket Créé\n");
-
-  // Nommage de la socket
-  struct sockaddr_in ad;
-  ad.sin_family = AF_INET;
-  ad.sin_addr.s_addr = INADDR_ANY;
-  ad.sin_port = htons(atoi(argv[1]));
-  if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
-  {
-    perror("Erreur lors du nommage de la socket");
-    exit(-1);
-  }
-  printf("Socket nommée\n");
-
-  // Passage de la socket en mode écoute
-  if (listen(dS, 7) < 0)
-  {
-    perror("Problème au niveau du listen");
-    exit(-1);
-  }
-  printf("Mode écoute\n");
-
-  while (1)
-  {
-    int dSC;
-    // Vérifions si on peut accepter un client
-    if (nbClient < MAX_CLIENT)
+    // Verification du nombre de paramètres
+    if (argc < 2)
     {
-      // Acceptons une connexion
-      struct sockaddr_in aC;
-      socklen_t lg = sizeof(struct sockaddr_in);
-      dSC = accept(dS, (struct sockaddr *)&aC, &lg);
-      if (dSC < 0)
-      {
-        perror("Problème lors de l'acceptation du client 1");
+        perror("Erreur : Lancez avec ./serveur [votre_port] ");
         exit(-1);
-      }
-      printf("Client %ld connecté\n", nbClient);
     }
+    printf("Début programme\n");
 
-    // On enregistre la socket du client
-    long numClient = giveNumClient();
-    tabClient[numClient].isOccupied = 1;
-    tabClient[numClient].dSC = dSC;
-
-    // Réception du pseudo
-    char *pseudo = (char *)malloc(sizeof(char) * 100);
-    receiving(dSC, pseudo, sizeof(char) * 12);
-    pseudo = strtok(pseudo, "\n");
-    tabClient[numClient].pseudo = (char *) malloc(sizeof(char)*12);
-    strcpy(tabClient[numClient].pseudo,pseudo);
-
-    // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-    strcat(pseudo," a rejoint la communication\n");
-    sending(dSC, pseudo);
-    free(pseudo);
-
-    //_____________________ Communication _____________________
-    if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
+    // Création de la socket
+    int dS = socket(PF_INET, SOCK_STREAM, 0);
+    if (dS < 0)
     {
-      perror("Erreur thread create");
+        perror("Problème de création de socket serveur");
+        exit(-1);
     }
+    printf("Socket Créé\n");
 
-    // On a un client en plus sur le serveur, on incrémente
-    nbClient += 1;
-    printf("Clients connectés : %ld\n", nbClient);
-  }
-  shutdown(dS, 2);
-  printf("Fin du programme\n");
+    // Nommage de la socket
+    struct sockaddr_in ad;
+    ad.sin_family = AF_INET;
+    ad.sin_addr.s_addr = INADDR_ANY;
+    ad.sin_port = htons(atoi(argv[1]));
+    if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
+    {
+        perror("Erreur lors du nommage de la socket");
+        exit(-1);
+    }
+    printf("Socket nommée\n");
+
+    // Passage de la socket en mode écoute
+    if (listen(dS, 7) < 0)
+    {
+        perror("Problème au niveau du listen");
+        exit(-1);
+    }
+    printf("Mode écoute\n");
+
+    while (1)
+    {
+        int dSC;
+        // Vérifions si on peut accepter un client
+        if (nbClient < MAX_CLIENT)
+        {
+            // TODO: envoyer msg
+        }
+        else
+        {
+            // Acceptons une connexion
+            struct sockaddr_in aC;
+            socklen_t lg = sizeof(struct sockaddr_in);
+            dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+            if (dSC < 0)
+            {
+                perror("Problème lors de l'acceptation du client 1");
+                exit(-1);
+            }
+            printf("Client %ld connecté\n", nbClient);
+
+            // On enregistre la socket du client
+            long numClient = giveNumClient();
+            tabClient[numClient].isOccupied = 1;
+            tabClient[numClient].dSC = dSC;
+
+            // Réception du pseudo
+            char *pseudo = (char *)malloc(sizeof(char) * 100);
+            receiving(dSC, pseudo, sizeof(char) * 12);
+            pseudo = strtok(pseudo, "\n");
+            tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
+            strcpy(tabClient[numClient].pseudo, pseudo);
+
+            // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+            strcat(pseudo, " a rejoint la communication\n");
+            sending(dSC, pseudo);
+            free(pseudo);
+
+            //_____________________ Communication _____________________
+            if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
+            {
+                perror("Erreur thread create");
+            }
+
+            // On a un client en plus sur le serveur, on incrémente
+            nbClient += 1;
+            printf("Clients connectés : %ld\n", nbClient);
+        }
+    }
+    shutdown(dS, 2);
+    printf("Fin du programme\n");
 }
