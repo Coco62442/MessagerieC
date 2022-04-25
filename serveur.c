@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -26,6 +27,11 @@ struct Client
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
+
+// Création du sémaphore
+sem_t semaphore;
+// Création du mutex pour la modification de tabClient[]
+pthread_mutex_t mutex;
 
 /*
  * Fonctions pour gérer les indices du tableaux de clients
@@ -127,11 +133,15 @@ void *communication(void *clientParam)
         printf("Envoi du message aux %ld clients. \n", nbClient);
         sending(tabClient[numClient].dSC, msgToSend);
     }
-
     // Fermeture du socket client
+    pthread_mutex_lock(&mutex);
     nbClient = nbClient - 1;
     tabClient[numClient].isOccupied = 0;
     shutdown(tabClient[numClient].dSC, 2);
+    pthread_mutex_unlock(&mutex);
+
+    // On relache le sémaphore
+    sem_post(&semaphore);
 
     return NULL;
 }
@@ -171,6 +181,9 @@ int main(int argc, char *argv[])
     }
     printf("Socket nommée\n");
 
+    // Initialisation du sémaphore
+    sem_init(&semaphore, PTHREAD_PROCESS_SHARED, MAX_CLIENT);
+
     // Passage de la socket en mode écoute
     if (listen(dS, 7) < 0)
     {
@@ -183,52 +196,50 @@ int main(int argc, char *argv[])
     {
         int dSC;
         // Vérifions si on peut accepter un client
-        if (nbClient > MAX_CLIENT)
+        // On attend la disponibilité du sémaphore
+        sem_wait(&semaphore);
+
+        // Acceptons une connexion
+        struct sockaddr_in aC;
+        socklen_t lg = sizeof(struct sockaddr_in);
+        dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+        if (dSC < 0)
         {
-            // Connexion rapide pour expliquer la raison du refus
-            //TODO:
+            perror("Problème lors de l'acceptation du client 1");
+            exit(-1);
         }
-        else
+        printf("Client %ld connecté\n", nbClient);
+
+        // On enregistre la socket du client
+        long numClient = giveNumClient();
+        pthread_mutex_lock(&mutex);
+        tabClient[numClient].isOccupied = 1;
+        tabClient[numClient].dSC = dSC;
+        pthread_mutex_unlock(&mutex);
+
+        // Réception du pseudo
+        char *pseudo = (char *)malloc(sizeof(char) * 100);
+        receiving(dSC, pseudo, sizeof(char) * 12);
+        pseudo = strtok(pseudo, "\n");
+        tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
+        strcpy(tabClient[numClient].pseudo, pseudo);
+
+        // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+        strcat(pseudo, " a rejoint la communication\n");
+        sending(dSC, pseudo);
+        free(pseudo);
+
+        //_____________________ Communication _____________________
+        if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
         {
-            // Acceptons une connexion
-            struct sockaddr_in aC;
-            socklen_t lg = sizeof(struct sockaddr_in);
-            dSC = accept(dS, (struct sockaddr *)&aC, &lg);
-            if (dSC < 0)
-            {
-                perror("Problème lors de l'acceptation du client 1");
-                exit(-1);
-            }
-            printf("Client %ld connecté\n", nbClient);
-
-            // On enregistre la socket du client
-            long numClient = giveNumClient();
-            tabClient[numClient].isOccupied = 1;
-            tabClient[numClient].dSC = dSC;
-
-            // Réception du pseudo
-            char *pseudo = (char *)malloc(sizeof(char) * 100);
-            receiving(dSC, pseudo, sizeof(char) * 12);
-            pseudo = strtok(pseudo, "\n");
-            tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
-            strcpy(tabClient[numClient].pseudo, pseudo);
-
-            // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-            strcat(pseudo, " a rejoint la communication\n");
-            sending(dSC, pseudo);
-            free(pseudo);
-
-            //_____________________ Communication _____________________
-            if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
-            {
-                perror("Erreur thread create");
-            }
-
-            // On a un client en plus sur le serveur, on incrémente
-            nbClient += 1;
-            printf("Clients connectés : %ld\n", nbClient);
+            perror("Erreur thread create");
         }
+
+        // On a un client en plus sur le serveur, on incrémente
+        nbClient += 1;
+        printf("Clients connectés : %ld\n", nbClient);
     }
     shutdown(dS, 2);
+    sem_destroy(&semaphore);
     printf("Fin du programme\n");
 }
