@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 	int dS = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS == -1)
 	{
-		perror("Problème de création de socket client");
+		perror("Problème de création de socket client\n");
 		return -1;
 	}
 	printf("Socket Créé\n");
@@ -121,19 +121,42 @@ int main(int argc, char *argv[])
 	aS.sin_port = htons(atoi(argv[2]));
 	socklen_t lgA = sizeof(struct sockaddr_in);
 
-	// Envoi d'une demande de connexion
-	if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
-	{
-		perror("Problème de connexion au serveur");
-		exit(-1);
-	}
-	printf("Socket connectée\n");
-
 	// Saisie du pseudo du client au clavier
 	char *myPseudo = (char *)malloc(sizeof(char) * 12);
-	printf("Votre pseudo (maximum 12 caractères): ");
+	printf("Votre pseudo (maximum 12 caractères): \n");
 	fgets(myPseudo, 12, stdin);
+
+	// Envoi d'une demande de connexion
+	printf("Connection en cours...\n");
+	if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
+	{
+		perror("Problème de connexion au serveur\n");
+		exit(-1);
+	}
+
+	char *repServeur = (char *)malloc(sizeof(char) * 10);
+	// Envoie du pseudo
 	sending(dS, myPseudo);
+
+	//Récéption de la réponse du serveur
+	receiving(dS, repServeur, sizeof(char)*10);
+	printf("%s", repServeur);
+
+	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
+	{
+		// Saisie du pseudo du client au clavier
+		printf("Votre pseudo (maximum 12 caractères): \n");
+		fgets(myPseudo, 12, stdin);
+
+		// Envoie du pseudo
+		sending(dS, myPseudo);
+
+		//Récéption de la réponse du serveur
+		receiving(dS, repServeur, sizeof(char)*10);
+		printf("%s", repServeur);
+	}
+	free(myPseudo);
+	
 
 	//_____________________ Communication _____________________
 	// Création des threads
@@ -142,13 +165,13 @@ int main(int argc, char *argv[])
 
 	if (pthread_create(&thread_sendind, NULL, sendingAux, (void *)dS) < 0)
 	{
-		perror("Erreur de création de thread d'envoi client");
+		perror("Erreur de création de thread d'envoi client\n");
 		exit(-1);
 	}
 
 	if (pthread_create(&thread_receiving, NULL, receivingAux, (void *)dS) < 0)
 	{
-		perror("Erreur de création de thread réception client");
+		perror("Erreur de création de thread réception client\n");
 		exit(-1);
 	}
 

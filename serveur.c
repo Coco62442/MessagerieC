@@ -50,6 +50,22 @@ int giveNumClient()
 }
 
 /*
+ * Fonctions pour vérifier que le pseudo est unique
+ * Retour : un entier
+ *          1 si le pseudo existe déjà
+ *          0 si le pseudo n'existe pas.
+ */
+int verifPseudo(char *pseudo)
+{
+	int i = 0;
+	while (i < MAX_CLIENT && strcmp(pseudo, tabClient[i].pseudo) != 0)
+	{
+		i ++;
+	}
+	return i == MAX_CLIENT;
+}
+
+/*
  * Envoie un message à toutes les sockets présentes dans le tableau des clients
  * et teste que tout se passe bien
  * Paramètres : int dS : expéditeur du message
@@ -234,11 +250,22 @@ int main(int argc, char *argv[])
 			pthread_mutex_unlock(&mutex);
 
 			// Réception du pseudo
-			char *pseudo = (char *)malloc(sizeof(char) * 100);
+			char *pseudo = (char *)malloc(sizeof(char) * 12);
 			receiving(dSC, pseudo, sizeof(char) * 12);
 			pseudo = strtok(pseudo, "\n");
+
+			while (verifPseudo(pseudo) == MAX_CLIENT) {
+				
+				receiving(dSC, pseudo, sizeof(char) * 12);
+				pseudo = strtok(pseudo, "\n");
+			}
+
+			// Enregistrement du client
 			tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
 			strcpy(tabClient[numClient].pseudo, pseudo);
+
+			// On envoie un message pour dire au client qu'il est bien connecté
+			sendingDM(pseudo, "Entrer \"!help\" pour avoir la liste des commandes disponibles\n");
 
 			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
 			strcat(pseudo, " a rejoint la communication\n");
