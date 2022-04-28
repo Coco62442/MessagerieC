@@ -84,9 +84,6 @@ void *receivingAux(void *dSparam)
 		char *r = (char *)malloc(sizeof(char) * 100);
 		receiving(dS, r, sizeof(char) * 100);
 
-		// On vérifie si le client veut quitter la communication
-		isEnd = endOfCommunication(r);
-
 		printf(">%s", r);
 		free(r);
 	}
@@ -123,7 +120,7 @@ int main(int argc, char *argv[])
 
 	// Saisie du pseudo du client au clavier
 	char *myPseudo = (char *)malloc(sizeof(char) * 12);
-	printf("Votre pseudo (maximum 12 caractères): \n");
+	printf("Votre pseudo (maximum 12 caractères):\n");
 	fgets(myPseudo, 12, stdin);
 
 	// Envoi d'une demande de connexion
@@ -140,12 +137,12 @@ int main(int argc, char *argv[])
 
 	//Récéption de la réponse du serveur
 	receiving(dS, repServeur, sizeof(char)*10);
-	printf("%s", repServeur);
+	printf("%s\n", repServeur);
 
 	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
 	{
 		// Saisie du pseudo du client au clavier
-		printf("Votre pseudo (maximum 12 caractères): \n");
+		printf("Votre pseudo (maximum 12 caractères)\n");
 		fgets(myPseudo, 12, stdin);
 
 		// Envoie du pseudo

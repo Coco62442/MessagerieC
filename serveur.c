@@ -17,13 +17,15 @@ struct Client
 	char *pseudo;
 };
 
+
+
 /*
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
  */
-#define MAX_CLIENT 2
+#define MAX_CLIENT 4
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
@@ -58,11 +60,16 @@ int giveNumClient()
 int verifPseudo(char *pseudo)
 {
 	int i = 0;
-	while (i < MAX_CLIENT && strcmp(pseudo, tabClient[i].pseudo) != 0)
+	while (i < MAX_CLIENT)
 	{
-		i ++;
+		printf("%d\n", tabClient[i].isOccupied);
+		if (tabClient[i].isOccupied && strcmp(pseudo, tabClient[i].pseudo) == 0) {
+			return 1;
+		}
+		
+		i++;
 	}
-	return i == MAX_CLIENT;
+	return 0;
 }
 
 /*
@@ -85,6 +92,33 @@ void sending(int dS, char *msg)
 				exit(-1);
 			}
 		}
+	}
+}
+
+/*
+ * Envoie un message en mp à un client en particulier
+ * et teste que tout se passe bien
+ * Paramètres : int dSC : destinataire du msg
+ *              char *msg : message à envoyer
+ */
+void sendingDM(char *pseudoReceiver, char *msg)
+{
+	int i = 0;
+	while (i < MAX_CLIENT && tabClient[i].isOccupied && tabClient[i].pseudo != pseudoReceiver)
+	{
+		i++;
+	}
+	if (i == nbClient)
+	{
+		perror("Pseudo pas trouvé");
+		exit(-1);
+	}
+	
+	long dSC = tabClient[i].dSC;
+	if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
+	{
+		perror("Erreur à l'envoi du mp");
+		exit(-1);
 	}
 }
 
@@ -211,77 +245,75 @@ int main(int argc, char *argv[])
 		// Vérifions si on peut accepter un client
 		sem_wait(&semaphore);
 
-			// Acceptons une connexion
-			// struct sockaddr_in aC;
-			// socklen_t lg = sizeof(struct sockaddr_in);
-			// dSC = accept(dS, (struct sockaddr *)&aC, &lg);
-			// if (dSC < 0)
-			// {
-			// 	perror("Problème lors de l'acceptation du client");
-			// 	exit(-1);
-			// }
-			// printf("Client %ld connecté\nClient en trop\n", nbClient);
-			// int try = 0;
-			// int erreur;
-			// char *msg = "Le nombre de client max est atteint, reconnectez-vous plus tard\n";
-			// do {
-			// 	int erreur = send(dSC, msg, strlen(msg) + 1, 0);
-			// 	try ++;
-			// } while (erreur == -1 && try < 20);
-		
+		// Acceptons une connexion
+		// struct sockaddr_in aC;
+		// socklen_t lg = sizeof(struct sockaddr_in);
+		// dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+		// if (dSC < 0)
+		// {
+		// 	perror("Problème lors de l'acceptation du client");
+		// 	exit(-1);
+		// }
+		// printf("Client %ld connecté\nClient en trop\n", nbClient);
+		// int try = 0;
+		// int erreur;
+		// char *msg = "Le nombre de client max est atteint, reconnectez-vous plus tard\n";
+		// do {
+		// 	int erreur = send(dSC, msg, strlen(msg) + 1, 0);
+		// 	try ++;
+		// } while (erreur == -1 && try < 20);
 
-			// Acceptons une connexion
-			struct sockaddr_in aC;
-			socklen_t lg = sizeof(struct sockaddr_in);
-			dSC = accept(dS, (struct sockaddr *)&aC, &lg);
-			if (dSC < 0)
-			{
-				perror("Problème lors de l'acceptation du client");
-				exit(-1);
-			}
-			printf("Client %ld connecté\n", nbClient);
+		// Acceptons une connexion
+		struct sockaddr_in aC;
+		socklen_t lg = sizeof(struct sockaddr_in);
+		dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+		if (dSC < 0)
+		{
+			perror("Problème lors de l'acceptation du client\n");
+			exit(-1);
+		}
+		printf("Client %ld connecté\n", nbClient);
 
-			// On enregistre la socket du client
-			long numClient = giveNumClient();
-			
-			pthread_mutex_lock(&mutex);
-			tabClient[numClient].isOccupied = 1;
-			tabClient[numClient].dSC = dSC;
-			pthread_mutex_unlock(&mutex);
+		// Réception du pseudo
+		char *pseudo = (char *)malloc(sizeof(char) * 12);
+		receiving(dSC, pseudo, sizeof(char) * 12);
+		pseudo = strtok(pseudo, "\n");
 
-			// Réception du pseudo
-			char *pseudo = (char *)malloc(sizeof(char) * 12);
+		while (verifPseudo(pseudo))
+		{
+			printf("Test3\n");
+			send(dSC, "Pseudo déjà existant\n",strlen("Pseudo déjà existant\n"), 0);
 			receiving(dSC, pseudo, sizeof(char) * 12);
 			pseudo = strtok(pseudo, "\n");
+		}
 
-			while (verifPseudo(pseudo) == MAX_CLIENT) {
-				
-				receiving(dSC, pseudo, sizeof(char) * 12);
-				pseudo = strtok(pseudo, "\n");
-			}
+		// Enregistrement du client
+		pthread_mutex_lock(&mutex);
+		long numClient = giveNumClient();
+		tabClient[numClient].isOccupied = 1;
+		tabClient[numClient].dSC = dSC;
+		tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
+		strcpy(tabClient[numClient].pseudo, pseudo);
+		pthread_mutex_unlock(&mutex);
 
-			// Enregistrement du client
-			tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
-			strcpy(tabClient[numClient].pseudo, pseudo);
+		// On envoie un message pour dire au client qu'il est bien connecté
+		char *repServ = "Entrer \"/aide\" pour avoir la liste des commandes disponibles\n";
+		sendingDM(pseudo, repServ);
 
-			// On envoie un message pour dire au client qu'il est bien connecté
-			sendingDM(pseudo, "Entrer \"!help\" pour avoir la liste des commandes disponibles\n");
+		// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+		strcat(pseudo, " a rejoint la communication\n");
+		sending(dSC, pseudo);
+		free(pseudo);
 
-			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-			strcat(pseudo, " a rejoint la communication\n");
-			sending(dSC, pseudo);
-			free(pseudo);
+		//_____________________ Communication _____________________
+		if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
+		{
+			perror("Erreur thread create");
+		}
 
-			//_____________________ Communication _____________________
-			if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
-			{
-				perror("Erreur thread create");
-			}
-
-			// On a un client en plus sur le serveur, on incrémente
-			nbClient += 1;
-			printf("Clients connectés : %ld\n", nbClient);
-		
+		// On a un client en plus sur le serveur, on incrémente
+		nbClient += 1;
+		printf("Clients connectés : %ld\n", nbClient);
 	}
 	shutdown(dS, 2);
 	sem_destroy(&semaphore);
