@@ -33,7 +33,7 @@ long nbClient = 0;
  * Celui ci contient toutes les commandes possibles pour l'utilisateur
  * Cette fonction est appelé lorsque le client envoie "!aide"
  */
-void aide(){
+void aide(void *clientParam){
 
 	FILE* fichierCom = NULL;
     char chaine[TAILLE_MAX] = "";
@@ -44,7 +44,8 @@ void aide(){
     {
         while (fgets(chaine, TAILLE_MAX, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
         {
-            printf("%s", chaine); // On affiche la chaîne qu'on vient de lire
+            // printf("%s", chaine); // On affiche la chaîne qu'on vient de lire
+               sending(tabClient[numClient].dSC, chaine);
         }
 		fclose(fichierCom);
     }
