@@ -80,8 +80,21 @@ void sending(int dS, char *msg)
  * Paramètres : int dSC : destinataire du msg
  *              char *msg : message à envoyer
  */
-void sendingDM(int dSC, char *msg)
+void sendingDM(char *pseudoReceiver, char *msg)
 {
+    long dSC = -1;
+    int i = 0;
+    // TODO: à vérifier
+    while (tabClient[i].pseudo != pseudoReceiver && tabClient[i].isOccupied)
+    {
+        i++;
+    }
+    if (i == nbClient)
+    {
+        perror("Pseudo pas trouvé");
+        exit(-1);
+    }
+    dSC = tabClient[i].dSC;
     if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
     {
         perror("Erreur à l'envoi du mp");
@@ -151,8 +164,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
         // Envoi du message au destinataire
         printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
-        int dSC = 1; // TODO: Récup le dSC du client à qui envoyer le mp via son pseudo
-        sendingDM(dSC, msgToSend);
+        sendingDM(pseudoReceiver, msgToSend);
         return 1;
     }
     return 0;
