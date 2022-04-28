@@ -56,12 +56,11 @@ int giveNumClient()
  * Envoie un message à toutes les sockets présentes dans le tableau des clients
  * et teste que tout se passe bien
  * Paramètres : int dS : expéditeur du message
- *              char * msg : message à envoyer
+ *              char *msg : message à envoyer
  */
 void sending(int dS, char *msg)
 {
-    int i;
-    for (i = 0; i < MAX_CLIENT; i++)
+    for (int i = 0; i < MAX_CLIENT; i++)
     {
         // On n'envoie pas au client qui a écrit le message
         if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
@@ -76,9 +75,24 @@ void sending(int dS, char *msg)
 }
 
 /*
+ * Envoie un message en mp à un client en particulier
+ * et teste que tout se passe bien
+ * Paramètres : int dSC : destinataire du msg
+ *              char *msg : message à envoyer
+ */
+void sendingDM(int dSC, char *msg)
+{
+    if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
+    {
+        perror("Erreur à l'envoi du mp");
+        exit(-1);
+    }
+}
+
+/*
  * Receptionne un message d'une socket et teste que tout se passe bien
  * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
+ *              char *msg : message à recevoir
  *              ssize_t size : taille maximum du message à recevoir
  */
 void receiving(int dS, char *rep, ssize_t size)
@@ -92,7 +106,7 @@ void receiving(int dS, char *rep, ssize_t size)
 
 /*
  * Vérifie si un client souhaite quitter la communication
- * Paramètres : char ** msg : message du client à vérifier
+ * Paramètres : char *msg : message du client à vérifier
  * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
  */
 int endOfCommunication(char *msg)
@@ -104,13 +118,44 @@ int endOfCommunication(char *msg)
     return 0;
 }
 
-int isCommand(char *msg)
+/*
+ * Vérifie si un client souhaite utiliser une des commandes
+ * Paramètres : char *msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+ */
+int useOfCommand(char *msg, char *pseudoSender)
 {
     char *strToken = strtok(msg, " ");
     if (strcmp(strToken, "/mp") == 0)
     {
-        
+        // Récupération du pseudo à qui envoyer le mp
+        char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
+        pseudoReceiver = strtok(NULL, " ");
+        if (pseudoReceiver == NULL)
+        {
+            printf("Commande \"/mp\" mal utilisée\n");
+            return 0;
+        }
+        char *msg = (char *)malloc(sizeof(char) * 115);
+        msg = strtok(NULL, " ");
+        if (msg == NULL)
+        {
+            printf("Commande \"/mp\" mal utilisée\n");
+            return 0;
+        }
+        // Préparation du message à envoyer
+        char *msgToSend = (char *)malloc(sizeof(char) * 115);
+        strcat(msgToSend, pseudoSender);
+        strcat(msgToSend, " vous chuchotte : ");
+        strcat(msgToSend, msg);
+
+        // Envoi du message au destinataire
+        printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
+        int dSC = 1; // TODO: Récup le dSC du client à qui envoyer le mp via son pseudo
+        sendingDM(dSC, msgToSend);
+        return 1;
     }
+    return 0;
 }
 
 /*
@@ -133,7 +178,10 @@ void *communication(void *clientParam)
         isEnd = endOfCommunication(msgReceived);
 
         // On vérifie si le client utilise une des commandes
-        //TODO:
+        if (useOfCommand(msgReceived, pseudoSender))
+        {
+            continue;
+        }
 
         // Ajout du pseudo de l'expéditeur devant le message à envoyer
         char *msgToSend = (char *)malloc(sizeof(char) * 115);
