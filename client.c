@@ -16,7 +16,7 @@ int isEnd = 0;
  */
 int endOfCommunication(char *msg)
 {
-    if (strcmp(msg, "fin\n") == 0)
+    if (strcmp(msg, "/exit\n") == 0)
     {
         strcpy(msg, "** a quitté la communication **\n");
         return 1;

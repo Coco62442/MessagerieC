@@ -104,6 +104,15 @@ int endOfCommunication(char *msg)
     return 0;
 }
 
+int isCommand(char *msg)
+{
+    char *strToken = strtok(msg, " ");
+    if (strcmp(strToken, "/mp") == 0)
+    {
+        
+    }
+}
+
 /*
  * Start routine de pthread_create()
  */
@@ -122,6 +131,9 @@ void *communication(void *clientParam)
 
         // On verifie si le client veut terminer la communication
         isEnd = endOfCommunication(msgReceived);
+
+        // On vérifie si le client utilise une des commandes
+        //TODO:
 
         // Ajout du pseudo de l'expéditeur devant le message à envoyer
         char *msgToSend = (char *)malloc(sizeof(char) * 115);
