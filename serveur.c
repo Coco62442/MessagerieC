@@ -84,10 +84,9 @@ void sending(int dS, char *msg)
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
-    long dSC = -1;
     int i = 0;
     // TODO: à vérifier
-    while (tabClient[i].pseudo != pseudoReceiver && tabClient[i].isOccupied)
+    while (i < MAX_CLIENT && tabClient[i].isOccupied && tabClient[i].pseudo != pseudoReceiver)
     {
         i++;
     }
@@ -96,7 +95,7 @@ void sendingDM(char *pseudoReceiver, char *msg)
         perror("Pseudo pas trouvé");
         exit(-1);
     }
-    dSC = tabClient[i].dSC;
+    long dSC = tabClient[i].dSC;
     if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
     {
         perror("Erreur à l'envoi du mp");
@@ -182,7 +181,7 @@ int useOfCommand(char *msg, char *pseudoSender)
             while (fgets(chaine, TAILLE_MAX, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
                 sendingDM(pseudoSender, chaine);
-                sleep(0.5);
+                sleep(0.2);
             }
             fclose(fichierCom);
         }
