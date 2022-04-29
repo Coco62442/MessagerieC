@@ -10,7 +10,7 @@
   'message'
   
   Se déconnecter :
-  'fin'
+  '/fin'
   
   Non implémenté :
   - mode hors ligne
