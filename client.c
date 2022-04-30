@@ -4,10 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-
+#include <signal.h>
+#include <unistd.h>
+// ################################## Ne sers a rien ################################################################
 #define MAX_LENGTH 10
 
 int isEnd = 0;
+int dS = -1;
+int boolConnect = 0;
 
 /*
  * Vérifie si un client souhaite quitter la communication
@@ -16,7 +20,7 @@ int isEnd = 0;
  */
 int endOfCommunication(char *msg)
 {
-	if (strcmp(msg, "fin\n") == 0 || strcmp(msg, "Le nombre de client max est atteint, reconnectez-vous plus tard\n") == 0)
+	if (strcmp(msg, "/fin\n") == 0)
 	{
 		strcpy(msg, "** a quitté la communication **\n");
 		return 1;
@@ -29,7 +33,7 @@ int endOfCommunication(char *msg)
  * Paramètres : int dS : la socket
  *              char * msg : message à envoyer
  */
-void sending(int dS, char *msg)
+void sending(char *msg)
 {
 	if (send(dS, msg, strlen(msg) + 1, 0) == -1)
 	{
@@ -38,10 +42,11 @@ void sending(int dS, char *msg)
 	}
 }
 
-// Fonction pour le thread d'envoi
-void *sendingAux(void *dSparam)
+/*
+ * Fonction pour le thread d'envoi
+ */
+void *sendingForThread()
 {
-	int dS = (long)dSparam;
 	while (!isEnd)
 	{
 		/*Saisie du message au clavier*/
@@ -53,7 +58,7 @@ void *sendingAux(void *dSparam)
 		isEnd = endOfCommunication(m);
 
 		// Envoi
-		sending(dS, m);
+		sending(m);
 		free(m);
 	}
 	shutdown(dS, 2);
@@ -66,7 +71,7 @@ void *sendingAux(void *dSparam)
  *              char * msg : message à recevoir
  *              ssize_t size : taille maximum du message à recevoir
  */
-void receiving(int dS, char *rep, ssize_t size)
+void receiving(char *rep, ssize_t size)
 {
 	if (recv(dS, rep, size, 0) == -1)
 	{
@@ -75,20 +80,35 @@ void receiving(int dS, char *rep, ssize_t size)
 	}
 }
 
-// Fonction pour le thread de réception
-void *receivingAux(void *dSparam)
+/*
+* Fonction pour le thread de réception
+*/
+void *receivingForThread()
 {
-	int dS = (long)dSparam;
 	while (!isEnd)
 	{
 		char *r = (char *)malloc(sizeof(char) * 100);
-		receiving(dS, r, sizeof(char) * 100);
+		receiving(r, sizeof(char) * 100);
 
 		printf(">%s", r);
 		free(r);
 	}
 	shutdown(dS, 2);
 	return NULL;
+}
+
+/* Signal Handler for SIGINT */
+void sigintHandler(int sig_num)
+{
+    printf("\nFin du programme avec Ctrl + C \n");
+    if(!boolConnect){
+        char *myPseudoEnd = (char *)malloc(sizeof(char) * 12);
+        myPseudoEnd = "FinClient";
+        sending(myPseudoEnd);
+    } 
+    sleep(0.2);
+    sending("** a quitté la communication **\n");
+    exit(1);
 }
 
 // argv[1] = adresse ip
@@ -103,7 +123,7 @@ int main(int argc, char *argv[])
 	printf("Début programme\n");
 
 	// Création de la socket
-	int dS = socket(PF_INET, SOCK_STREAM, 0);
+	dS = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS == -1)
 	{
 		perror("Problème de création de socket client\n");
@@ -118,11 +138,6 @@ int main(int argc, char *argv[])
 	aS.sin_port = htons(atoi(argv[2]));
 	socklen_t lgA = sizeof(struct sockaddr_in);
 
-	// Saisie du pseudo du client au clavier
-	char *myPseudo = (char *)malloc(sizeof(char) * 12);
-	printf("Votre pseudo (maximum 12 caractères):\n");
-	fgets(myPseudo, 12, stdin);
-
 	// Envoi d'une demande de connexion
 	printf("Connection en cours...\n");
 	if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
@@ -130,29 +145,39 @@ int main(int argc, char *argv[])
 		perror("Problème de connexion au serveur\n");
 		exit(-1);
 	}
+	printf("Socket connectée\n");
 
-	char *repServeur = (char *)malloc(sizeof(char) * 10);
+	// Fin avec Ctrl + C
+    signal(SIGINT, sigintHandler);
+
+	// Saisie du pseudo du client au clavier
+	char *myPseudo = (char *)malloc(sizeof(char) * 12);
+	printf("Votre pseudo (maximum 11 caractères):\n");
+	fgets(myPseudo, 12, stdin);
+
 	// Envoie du pseudo
-	sending(dS, myPseudo);
+	sending(myPseudo);
 
+	char *repServeur = (char *)malloc(sizeof(char) * 60);
 	//Récéption de la réponse du serveur
-	receiving(dS, repServeur, sizeof(char)*10);
+	receiving(repServeur, sizeof(char)*60);
 	printf("%s\n", repServeur);
 
 	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
 	{
 		// Saisie du pseudo du client au clavier
-		printf("Votre pseudo (maximum 12 caractères)\n");
+		printf("Votre pseudo (maximum 11 caractères)\n");
 		fgets(myPseudo, 12, stdin);
 
 		// Envoie du pseudo
-		sending(dS, myPseudo);
+		sending(myPseudo);
 
 		//Récéption de la réponse du serveur
-		receiving(dS, repServeur, sizeof(char)*10);
-		printf("%s", repServeur);
+		receiving(repServeur, sizeof(char)*60);
+		printf("%s\n", repServeur);
 	}
 	free(myPseudo);
+	boolConnect = 1;
 	
 
 	//_____________________ Communication _____________________
@@ -160,13 +185,13 @@ int main(int argc, char *argv[])
 	pthread_t thread_sendind;
 	pthread_t thread_receiving;
 
-	if (pthread_create(&thread_sendind, NULL, sendingAux, (void *)dS) < 0)
+	if (pthread_create(&thread_sendind, NULL, sendingForThread, 0) < 0)
 	{
 		perror("Erreur de création de thread d'envoi client\n");
 		exit(-1);
 	}
 
-	if (pthread_create(&thread_receiving, NULL, receivingAux, (void *)dS) < 0)
+	if (pthread_create(&thread_receiving, NULL, receivingForThread, 0) < 0)
 	{
 		perror("Erreur de création de thread réception client\n");
 		exit(-1);
