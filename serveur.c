@@ -162,13 +162,14 @@ int useOfCommand(char *msg, char *pseudoSender)
         // Récupération du pseudo à qui envoyer le mp
         char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
         pseudoReceiver = strtok(NULL, " ");
-        if (pseudoReceiver == NULL)
+        if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
         {
+			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
             printf("Commande \"/mp\" mal utilisée\n");
             return 0;
         }
         char *msg = (char *)malloc(sizeof(char) * 115);
-        msg = strtok(NULL, " ");
+        msg = strtok(NULL, "");
         if (msg == NULL)
         {
             printf("Commande \"/mp\" mal utilisée\n");
