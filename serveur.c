@@ -100,8 +100,11 @@ void sending(int dS, char *msg)
  * et teste que tout se passe bien
  * Paramètres : int dSC : destinataire du msg
  *              char *msg : message à envoyer
+ * Retour : un entier
+ *          1 si le mp a pu s'envoyer
+ *          0 si le mp n'a pas pu s'envoyer (erreur).
  */
-void sendingDM(char *pseudoReceiver, char *msg)
+int sendingDM(char *pseudoReceiver, char *msg)
 {
     int i = 0;
     while (i < MAX_CLIENT && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) != 0)
@@ -110,15 +113,16 @@ void sendingDM(char *pseudoReceiver, char *msg)
     }
     if (i == MAX_CLIENT)
     {
-        perror("Pseudo pas trouvé");
-        exit(-1);
+        printf("Erreur d'envoi de mp : pseudo non trouvé.\n");
+        return 0;
     }
     long dSC = tabClient[i].dSC;
     if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
     {
-        perror("Erreur à l'envoi du mp");
-        exit(-1);
+        printf("Erreur à l'envoi du mp\n");
+        return 0;
     }
+    return 1;
 }
 
 /*
@@ -182,8 +186,12 @@ int useOfCommand(char *msg, char *pseudoSender)
         strcat(msgToSend, msg);
 
         // Envoi du message au destinataire
-        printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
-        sendingDM(pseudoReceiver, msgToSend);
+        printf("Envoi du message de %s au client %s.\n", pseudoSender, pseudoReceiver);
+        if (!sendingDM(pseudoReceiver, msgToSend))
+        {
+            printf("mp non envoyé, erreur au send\n");
+            return 0;
+        }
         return 1;
     }
     return 0;
