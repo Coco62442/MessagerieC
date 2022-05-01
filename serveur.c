@@ -28,8 +28,10 @@ Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
 
-// Création du sémaphore
+// Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
+// Création du sémpahore pour gérer les threads
+sem_t semaphoreThread;
 // Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
 
@@ -137,7 +139,7 @@ void receiving(int dS, char *rep, ssize_t size)
 
 /*
  * Vérifie si un client souhaite quitter la communication
- * Paramètres : char ** msg : message du client à vérifier
+ * Paramètres : char * msg : message du client à vérifier
  * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
  */
 int endOfCommunication(char *msg)
@@ -147,6 +149,16 @@ int endOfCommunication(char *msg)
 		return 1;
 	}
 	return 0;
+}
+
+/*
+ * Permet de JOIN les threads terminés
+ * Paramètre : int numClient : indice du thred à join
+*/
+void endOfThread(int numclient)
+{
+	pthread_join(tabThread[numclient], 0);
+	sem_post(&semaphoreThread);
 }
 
 /*
@@ -234,8 +246,12 @@ void *communication(void *clientParam)
 	pthread_mutex_unlock(&mutex);
 	shutdown(tabClient[numClient].dSC, 2);
 	
-	// On relache le sémaphore
+	// On relache le sémaphore pour les clients en attente
     sem_post(&semaphore);
+
+	// On incrémente le sémaphore des threads
+	sem_wait(&semaphoreThread);
+	endOfThread(numClient);
 
 	return NULL;
 }
@@ -275,8 +291,11 @@ int main(int argc, char *argv[])
 	}
 	printf("Socket nommée\n");
 
-	// Initialisation du sémaphore
+	// Initialisation du sémaphore pour gérer les clients
 	sem_init(&semaphore, PTHREAD_PROCESS_SHARED, MAX_CLIENT);
+	
+	// Initialisation du sémaphore pour gérer les threads
+	sem_init(&semaphoreThread, PTHREAD_PROCESS_SHARED, 1);
 
 	// Passage de la socket en mode écoute
 	if (listen(dS, 7) < 0)
@@ -331,9 +350,12 @@ int main(int argc, char *argv[])
 		repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
 		sendingDM(pseudo, repServ);
 
-		// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-		strcat(pseudo, " a rejoint la communication\n");
-		sending(dSC, pseudo);
+		// On vérifie que ce n'est pas le pseudo par défaut
+		if (strcmp(pseudo, "FinClient") != 0){
+			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+			strcat(pseudo, " a rejoint la communication\n");
+			sending(dSC, pseudo);
+		}
 		free(pseudo);
 
 		//_____________________ Communication _____________________
@@ -348,5 +370,6 @@ int main(int argc, char *argv[])
 	}
 	shutdown(dS, 2);
 	sem_destroy(&semaphore);
+	sem_destroy(&semaphoreThread);
 	printf("Fin du programme\n");
 }
