@@ -23,7 +23,7 @@ struct Client
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
  */
-#define MAX_CLIENT 5
+#define MAX_CLIENT 3
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
@@ -50,6 +50,27 @@ int giveNumClient()
         i += 1;
     }
     exit(-1);
+}
+
+/*
+ * Fonctions pour vérifier que le pseudo est unique
+ * Retour : un entier
+ *          1 si le pseudo existe déjà
+ *          0 si le pseudo n'existe pas.
+ */
+int verifPseudo(char *pseudo)
+{
+    int i = 0;
+    while (i < MAX_CLIENT)
+    {
+        if (tabClient[i].isOccupied && strcmp(pseudo, tabClient[i].pseudo) == 0)
+        {
+            return 1;
+        }
+
+        i++;
+    }
+    return 0;
 }
 
 /*
@@ -82,19 +103,17 @@ void sending(int dS, char *msg)
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
-    long dSC = -1;
     int i = 0;
-    // TODO: à vérifier
-    while (tabClient[i].pseudo != pseudoReceiver && tabClient[i].isOccupied)
+    while (i < MAX_CLIENT && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) != 0)
     {
         i++;
     }
-    if (i == nbClient)
+    if (i == MAX_CLIENT)
     {
         perror("Pseudo pas trouvé");
         exit(-1);
     }
-    dSC = tabClient[i].dSC;
+    long dSC = tabClient[i].dSC;
     if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
     {
         perror("Erreur à l'envoi du mp");
@@ -105,7 +124,7 @@ void sendingDM(char *pseudoReceiver, char *msg)
 /*
  * Receptionne un message d'une socket et teste que tout se passe bien
  * Paramètres : int dS : la socket
- *              char *msg : message à recevoir
+ *              char * msg : message à recevoir
  *              ssize_t size : taille maximum du message à recevoir
  */
 void receiving(int dS, char *rep, ssize_t size)
@@ -119,7 +138,7 @@ void receiving(int dS, char *rep, ssize_t size)
 
 /*
  * Vérifie si un client souhaite quitter la communication
- * Paramètres : char *msg : message du client à vérifier
+ * Paramètres : char ** msg : message du client à vérifier
  * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
  */
 int endOfCommunication(char *msg)
@@ -190,7 +209,9 @@ void *communication(void *clientParam)
         isEnd = endOfCommunication(msgReceived);
 
         // On vérifie si le client utilise une des commandes
-        if (useOfCommand(msgReceived, pseudoSender))
+        char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
+        strcpy(msgToVerif, msgReceived);
+        if (useOfCommand(msgToVerif, pseudoSender))
         {
             continue;
         }
@@ -202,15 +223,16 @@ void *communication(void *clientParam)
         strcat(msgToSend, msgReceived);
 
         // Envoi du message aux autres clients
-        printf("Envoi du message aux %ld clients. \n", nbClient);
+        printf("Envoi du message aux %ld clients. \n", nbClient - 1);
         sending(tabClient[numClient].dSC, msgToSend);
     }
+
     // Fermeture du socket client
     pthread_mutex_lock(&mutex);
     nbClient = nbClient - 1;
     tabClient[numClient].isOccupied = 0;
-    shutdown(tabClient[numClient].dSC, 2);
     pthread_mutex_unlock(&mutex);
+    shutdown(tabClient[numClient].dSC, 2);
 
     // On relache le sémaphore
     sem_post(&semaphore);
@@ -268,7 +290,7 @@ int main(int argc, char *argv[])
     {
         int dSC;
         // Vérifions si on peut accepter un client
-        // On attend la disponibilité du sémaphore
+        // On attends la disponibilité du sémaphore
         sem_wait(&semaphore);
 
         // Acceptons une connexion
@@ -277,24 +299,36 @@ int main(int argc, char *argv[])
         dSC = accept(dS, (struct sockaddr *)&aC, &lg);
         if (dSC < 0)
         {
-            perror("Problème lors de l'acceptation du client 1");
+            perror("Problème lors de l'acceptation du client\n");
             exit(-1);
         }
         printf("Client %ld connecté\n", nbClient);
-
-        // On enregistre la socket du client
-        long numClient = giveNumClient();
-        pthread_mutex_lock(&mutex);
-        tabClient[numClient].isOccupied = 1;
-        tabClient[numClient].dSC = dSC;
-        pthread_mutex_unlock(&mutex);
 
         // Réception du pseudo
         char *pseudo = (char *)malloc(sizeof(char) * 100);
         receiving(dSC, pseudo, sizeof(char) * 12);
         pseudo = strtok(pseudo, "\n");
+
+        while (verifPseudo(pseudo))
+        {
+            send(dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
+            receiving(dSC, pseudo, sizeof(char) * 12);
+            pseudo = strtok(pseudo, "\n");
+        }
+
+        // Enregistrement du client
+        long numClient = giveNumClient();
+        pthread_mutex_lock(&mutex);
+        tabClient[numClient].isOccupied = 1;
+        tabClient[numClient].dSC = dSC;
         tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
         strcpy(tabClient[numClient].pseudo, pseudo);
+        pthread_mutex_unlock(&mutex);
+
+        // On envoie un message pour dire au client qu'il est bien connecté
+        char *repServ = (char *)malloc(sizeof(char) * 100);
+        repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
+        sendingDM(pseudo, repServ);
 
         // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
         strcat(pseudo, " a rejoint la communication\n");
