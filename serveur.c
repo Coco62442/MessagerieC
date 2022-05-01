@@ -167,16 +167,19 @@ int useOfCommand(char *msg, char *pseudoSender)
         // Récupération du pseudo à qui envoyer le mp
         char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
         pseudoReceiver = strtok(NULL, " ");
-        if (pseudoReceiver == NULL)
+        if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
         {
-            printf("Commande \"/mp\" mal utilisée\n");
+            printf("Commande \"/mp\" mal utilisée : pas de pseudo renseigné\n");
+            sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
             return 0;
         }
+
+        // On récupère le coprs du message à envoyer
         char *msg = (char *)malloc(sizeof(char) * 115);
-        msg = strtok(NULL, " ");
+        msg = strtok(NULL, "");
         if (msg == NULL)
         {
-            printf("Commande \"/mp\" mal utilisée\n");
+            printf("Commande \"/mp\" mal utilisée : message vide\n");
             return 0;
         }
         // Préparation du message à envoyer
@@ -186,12 +189,12 @@ int useOfCommand(char *msg, char *pseudoSender)
         strcat(msgToSend, msg);
 
         // Envoi du message au destinataire
-        printf("Envoi du message de %s au client %s.\n", pseudoSender, pseudoReceiver);
         if (!sendingDM(pseudoReceiver, msgToSend))
         {
             printf("mp non envoyé, erreur au send\n");
             return 0;
         }
+        printf("Envoi du message de %s au client %s.\n", pseudoSender, pseudoReceiver);
         return 1;
     }
     return 0;
