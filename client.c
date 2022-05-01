@@ -51,9 +51,7 @@ void *sendingForThread()
 	{
 		/*Saisie du message au clavier*/
 		char *m = (char *)malloc(sizeof(char) * 100);
-		printf("> ");
 		fgets(m, 100, stdin);
-		printf("2> ");
 
 		// On vérifie si le client veut quitter la communication
 		isEnd = endOfCommunication(m);
@@ -90,9 +88,8 @@ void *receivingForThread()
 	{
 		char *r = (char *)malloc(sizeof(char) * 100);
 		receiving(r, sizeof(char) * 100);
-
+		// strcpy(r, strcat(r, "\n4 > "));
 		printf("%s", r);
-		printf("1 >");
 		free(r);
 	}
 	shutdown(dS, 2);
@@ -179,6 +176,7 @@ int main(int argc, char *argv[])
 		printf("%s\n", repServeur);
 	}
 	free(myPseudo);
+	printf("Connection complète\n");
 	boolConnect = 1;
 	
 

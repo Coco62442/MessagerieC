@@ -1,3 +1,9 @@
+/*
+La commande /aide n'est pas totalement implémentée. 
+Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'éexécution de la commande
+Veuillez trouver le diagramme de Séquence sur ce lien :
+//www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00 
+*/
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -5,6 +11,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <unistd.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -27,6 +34,8 @@ struct Client
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
+
+#define TAILLE_MAX 10000
 
 // Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
@@ -196,6 +205,56 @@ int useOfCommand(char *msg, char *pseudoSender)
         // Envoi du message au destinataire
         printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
         sendingDM(pseudoReceiver, msgToSend);
+        return 1;
+    }
+	else if (strcmp(strToken, "/isConnecte") == 0)
+	{
+		// Récupération du pseudo
+        char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
+        pseudoToCheck = strtok(NULL, " ");
+		pseudoToCheck = strtok(pseudoToCheck, "\n");
+
+		// Préparation du message à envoyer
+		char *msgToSend = (char *)malloc(sizeof(char) * 40);
+		strcat(msgToSend, pseudoToCheck);
+
+		if (verifPseudo(pseudoToCheck))
+		{
+			// Envoi du message au destinataire
+			strcat(msgToSend, " est en ligne\n");
+			sendingDM(pseudoSender, msgToSend);
+        	return 1;
+		}
+		else
+		{
+			// Envoi du message au destinataire
+			strcat(msgToSend, " n'est pas en ligne\n");
+			sendingDM(pseudoSender, msgToSend);
+        	return 1;
+		}
+	}
+	else if (strcmp(strToken, "/aide\n") == 0)
+    {
+        // Envoie de l'aide au client, un message par ligne
+        FILE* fichierCom = NULL;
+        char chaine[TAILLE_MAX];
+
+        fichierCom = fopen("commande.txt", "r");
+
+        if (fichierCom != NULL)
+        {
+            while (fgets(chaine, 40, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+            {
+                sendingDM(pseudoSender, chaine);
+                sleep(0.2);
+            }
+            fclose(fichierCom);
+        }
+        else
+        {
+            // On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
+            printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
+        }
         return 1;
     }
     return 0;
