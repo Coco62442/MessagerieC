@@ -1,13 +1,10 @@
-  -------Commandes disponible :
+  -------Commande disponible :
   
   Afficher l'aide :
   '/aide'
   
   Envoyer un message a un ami grâce à son nom d'utilisateur :
   '/mp nomUtilisateur message'
-  
-  Savoir si un ami est connecté grâce à son nom d'utilisateur :
-  '/isConnecte nomUtilisateur'
   
   Envoyer un message à tout les utilisateurs connectés :
   'message'
@@ -18,4 +15,4 @@
   Non implémenté :
   - mode hors ligne
   - liste utilisateurs connectés
- 
+  - recherche utilisateur connecté

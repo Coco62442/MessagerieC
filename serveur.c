@@ -35,7 +35,7 @@ Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
 
-#define TAILLE_MAX 10000
+#define TAILLE_MAX 1000
 
 // Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
@@ -205,6 +205,7 @@ int useOfCommand(char *msg, char *pseudoSender)
         // Envoi du message au destinataire
         printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
         sendingDM(pseudoReceiver, msgToSend);
+		free(msgToSend);
         return 1;
     }
 	else if (strcmp(strToken, "/isConnecte") == 0)
@@ -223,40 +224,62 @@ int useOfCommand(char *msg, char *pseudoSender)
 			// Envoi du message au destinataire
 			strcat(msgToSend, " est en ligne\n");
 			sendingDM(pseudoSender, msgToSend);
-        	return 1;
 		}
 		else
 		{
 			// Envoi du message au destinataire
 			strcat(msgToSend, " n'est pas en ligne\n");
 			sendingDM(pseudoSender, msgToSend);
-        	return 1;
 		}
+		free(msgToSend);
+		return 1;
 	}
 	else if (strcmp(strToken, "/aide\n") == 0)
     {
         // Envoie de l'aide au client, un message par ligne
         FILE* fichierCom = NULL;
-        char chaine[TAILLE_MAX];
+        char *chaine = (char *)malloc(sizeof(char) * 100);
 
         fichierCom = fopen("commande.txt", "r");
 
         if (fichierCom != NULL)
         {
-            while (fgets(chaine, 40, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+            while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
-                sendingDM(pseudoSender, chaine);
-                sleep(0.2);
+				char *chaineToSend = (char *)malloc(sizeof(char) * 100);
+				strcpy(chaineToSend, chaine);
+				sendingDM(pseudoSender, chaineToSend);
+				sleep(0.7);
+				free(chaineToSend);
             }
             fclose(fichierCom);
+			sendingDM(pseudoSender, "\n");
         }
         else
         {
             // On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
             printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
         }
+		free(chaine);
         return 1;
     }
+	else if(strcmp(strToken, "/enLigne\n") == 0)
+	{
+		int i = 0;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied)
+			{
+				char *msgToSend = (char *)malloc(sizeof(char) * 30);
+				strcat(msgToSend, tabClient[i].pseudo);
+				strcat(msgToSend, " est connecté\n");
+				sendingDM(pseudoSender, msgToSend);
+				free(msgToSend);
+			}
+			i++;
+		}
+		return 1;
+	}
     return 0;
 }
 
@@ -292,10 +315,12 @@ void *communication(void *clientParam)
 		strcat(msgToSend, pseudoSender);
 		strcat(msgToSend, " : ");
 		strcat(msgToSend, msgReceived);
+		free(msgReceived);
 
 		// Envoi du message aux autres clients
 		printf("Envoi du message aux %ld clients. \n", nbClient-1);
 		sending(tabClient[numClient].dSC, msgToSend);
+		free(msgToSend);
 	}
 
 	// Fermeture du socket client
@@ -408,7 +433,6 @@ int main(int argc, char *argv[])
 		char *repServ = (char *)malloc(sizeof(char) * 100);
 		repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
 		sendingDM(pseudo, repServ);
-
 		// On vérifie que ce n'est pas le pseudo par défaut
 		if (strcmp(pseudo, "FinClient") != 0){
 			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
@@ -416,7 +440,6 @@ int main(int argc, char *argv[])
 			sending(dSC, pseudo);
 		}
 		free(pseudo);
-
 		//_____________________ Communication _____________________
 		if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
 		{
