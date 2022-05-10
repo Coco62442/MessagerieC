@@ -6,7 +6,6 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
-#define TAILLE_MAX 15000
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -167,30 +166,35 @@ int useOfCommand(char *msg, char *pseudoSender)
         printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
         sendingDM(pseudoReceiver, msgToSend);
         return 1;
-    } else if (strcmp(strToken, "/aide\n") == 0)
+    }
+    else if (strcmp(strToken, "/aide\n") == 0)
     {
-        printf("dans aide");
+        printf("dans aide\n");
         // Envoie de l'aide au client, un message par ligne
-        FILE* fichierCom = NULL;
-        char chaine[TAILLE_MAX];
-
+        FILE *fichierCom = NULL;
         fichierCom = fopen("commande.txt", "r");
+        fseek(fichierCom, 0, SEEK_END);
+        int length = ftell(fichierCom);
+        fseek(fichierCom, 0, SEEK_SET);
 
         if (fichierCom != NULL)
         {
-            char* toutFichier = malloc(15000);
-            while (fgets(chaine, TAILLE_MAX, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+            char *chaine = malloc(100);
+            char *toutFichier = malloc(length + 1);
+            while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
                 strcat(toutFichier, chaine);
             }
             sendingDM(pseudoSender, toutFichier);
-            fclose(fichierCom);
+            free(chaine);
+            free(toutFichier);
         }
         else
         {
             // On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
             printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
         }
+        fclose(fichierCom);
         return 1;
     }
     return 0;
@@ -218,6 +222,7 @@ void *communication(void *clientParam)
         // On vérifie si le client utilise une des commandes
         if (useOfCommand(msgReceived, pseudoSender))
         {
+            free(msgReceived);
             continue;
         }
 
@@ -230,6 +235,8 @@ void *communication(void *clientParam)
         // Envoi du message aux autres clients
         printf("Envoi du message aux %ld clients. \n", nbClient);
         sending(tabClient[numClient].dSC, msgToSend);
+        free(msgReceived);
+        free(msgToSend);
     }
     // Fermeture du socket client
     pthread_mutex_lock(&mutex);
@@ -249,10 +256,8 @@ void *communication(void *clientParam)
  * Celui ci contient toutes les commandes possibles pour l'utilisateur
  * Cette fonction est appelé lorsque le client envoie "!aide"
  */
-void aide(char *pseudoReceiver){
-
-	
-
+void aide(char *pseudoReceiver)
+{
 }
 
 /*
