@@ -21,6 +21,7 @@ struct Client
 {
 	int isOccupied;
 	long dSC;
+	long dSCF;
 	char *pseudo;
 };
 
@@ -280,7 +281,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		return 1;
 	}
-	else if(strcmp(strToken, "/file") == 0)
+	else if(strcmp(strToken, "/file\n") == 0)
 	{
 		
 	}
