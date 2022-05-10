@@ -7,6 +7,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define SIZE 1024
+
 int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
@@ -60,6 +62,27 @@ void *sendingForThread()
     }
     shutdown(dS, 2);
     return NULL;
+}
+
+/*
+ * Envoie le fichier donné en paramètre au serveur
+ * Paramètres : FILE *fp : le fichier à envoyer
+ *              int dS : la socket du serveur
+ */
+void send_file(FILE *fp)
+{
+    int n;
+    char data[SIZE] = {0};
+
+    while (fgets(data, SIZE, fp) != NULL)
+    {
+        if (send(dS, data, sizeof(data), 0) == -1)
+        {
+            perror("[-]Error in sending file.");
+            exit(-1);
+        }
+        bzero(data, SIZE);
+    }
 }
 
 /*
