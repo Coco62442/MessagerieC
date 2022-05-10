@@ -283,6 +283,16 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if(strcmp(strToken, "/file\n") == 0)
 	{
+		int i = 0;
+		long dSC;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied == 1 && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
+			{
+				dSC = tabClient[i].dSC;
+			}
+			i ++;
+		}
 		
 	}
     return 0;
