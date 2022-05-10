@@ -178,11 +178,12 @@ int useOfCommand(char *msg, char *pseudoSender)
 
         if (fichierCom != NULL)
         {
+            char* toutFichier = malloc(15000);
             while (fgets(chaine, TAILLE_MAX, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
-                sendingDM(pseudoSender, chaine);
-                sleep(0.2);
+                strcat(toutFichier, chaine);
             }
+            sendingDM(pseudoSender, toutFichier);
             fclose(fichierCom);
         }
         else
