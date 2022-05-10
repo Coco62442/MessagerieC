@@ -4,141 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <semaphore.h>
+#include <signal.h>
+#include <unistd.h>
 
-/*
- * Définition d'une structure Client pour regrouper toutes les informations du client
- */
-typedef struct Client Client;
-struct Client
-{
-    int isOccupied;
-    long dSC;
-    char *pseudo;
-};
-
-/*
- * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
- * - tabClient = tableau répertoriant les clients connectés
- * - tabThread = tableau des threads associés au traitement de chaque client
- * - nbClient = nombre de clients actuellement connectés
- */
-#define MAX_CLIENT 3
-Client tabClient[MAX_CLIENT];
-pthread_t tabThread[MAX_CLIENT];
-long nbClient = 0;
-
-// Création du sémaphore
-sem_t semaphore;
-// Création du mutex pour la modification de tabClient[]
-pthread_mutex_t mutex;
-
-/*
- * Fonctions pour gérer les indices du tableaux de clients
- * Retour : un entier, indice du premier emplacement disponible
- *          -1 si tout les emplacements sont occupés.
- */
-int giveNumClient()
-{
-    int i = 0;
-    while (i < MAX_CLIENT)
-    {
-        if (!tabClient[i].isOccupied)
-        {
-            return i;
-        }
-        i += 1;
-    }
-    exit(-1);
-}
-
-/*
- * Fonctions pour vérifier que le pseudo est unique
- * Retour : un entier
- *          1 si le pseudo existe déjà
- *          0 si le pseudo n'existe pas.
- */
-int verifPseudo(char *pseudo)
-{
-    int i = 0;
-    while (i < MAX_CLIENT)
-    {
-        if (tabClient[i].isOccupied && strcmp(pseudo, tabClient[i].pseudo) == 0)
-        {
-            return 1;
-        }
-
-        i++;
-    }
-    return 0;
-}
-
-/*
- * Envoie un message à toutes les sockets présentes dans le tableau des clients
- * et teste que tout se passe bien
- * Paramètres : int dS : expéditeur du message
- *              char *msg : message à envoyer
- */
-void sending(int dS, char *msg)
-{
-    for (int i = 0; i < MAX_CLIENT; i++)
-    {
-        // On n'envoie pas au client qui a écrit le message
-        if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
-        {
-            if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
-            {
-                perror("Erreur au send");
-                exit(-1);
-            }
-        }
-    }
-}
-
-/*
- * Envoie un message en mp à un client en particulier
- * et teste que tout se passe bien
- * Paramètres : int dSC : destinataire du msg
- *              char *msg : message à envoyer
- * Retour : un entier
- *          1 si le mp a pu s'envoyer
- *          0 si le mp n'a pas pu s'envoyer (erreur).
- */
-int sendingDM(char *pseudoReceiver, char *msg)
-{
-    int i = 0;
-    while (i < MAX_CLIENT && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) != 0)
-    {
-        i++;
-    }
-    if (i == MAX_CLIENT)
-    {
-        printf("Erreur d'envoi de mp : pseudo non trouvé.\n");
-        return 0;
-    }
-    long dSC = tabClient[i].dSC;
-    if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
-    {
-        printf("Erreur à l'envoi du mp\n");
-        return 0;
-    }
-    return 1;
-}
-
-/*
- * Receptionne un message d'une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
- *              ssize_t size : taille maximum du message à recevoir
- */
-void receiving(int dS, char *rep, ssize_t size)
-{
-    if (recv(dS, rep, size, 0) == -1)
-    {
-        perror("Erreur au recv");
-        exit(-1);
-    }
-}
+int isEnd = 0;
+int dS = -1;
+int boolConnect = 0;
 
 /*
  * Vérifie si un client souhaite quitter la communication
@@ -147,216 +18,185 @@ void receiving(int dS, char *rep, ssize_t size)
  */
 int endOfCommunication(char *msg)
 {
-    if (strcmp(msg, "** a quitté la communication **\n") == 0)
+    if (strcmp(msg, "/fin\n") == 0)
     {
+        strcpy(msg, "** a quitté la communication **\n");
         return 1;
     }
     return 0;
 }
 
 /*
- * Vérifie si un client souhaite utiliser une des commandes
- * Paramètres : char *msg : message du client à vérifier
- * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+ * Envoie un message à une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à envoyer
  */
-int useOfCommand(char *msg, char *pseudoSender)
+void sending(char *msg)
 {
-    char *strToken = strtok(msg, " ");
-    if (strcmp(strToken, "/mp") == 0)
+    if (send(dS, msg, strlen(msg) + 1, 0) == -1)
     {
-        // Récupération du pseudo à qui envoyer le mp
-        char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
-        pseudoReceiver = strtok(NULL, " ");
-        if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
-        {
-            printf("Commande \"/mp\" mal utilisée : pas de pseudo renseigné\n");
-            sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
-            return 0;
-        }
-
-        // On récupère le coprs du message à envoyer
-        char *msg = (char *)malloc(sizeof(char) * 115);
-        msg = strtok(NULL, "");
-        if (msg == NULL)
-        {
-            printf("Commande \"/mp\" mal utilisée : message vide\n");
-            return 0;
-        }
-        // Préparation du message à envoyer
-        char *msgToSend = (char *)malloc(sizeof(char) * 115);
-        strcat(msgToSend, pseudoSender);
-        strcat(msgToSend, " vous chuchotte : ");
-        strcat(msgToSend, msg);
-
-        // Envoi du message au destinataire
-        if (!sendingDM(pseudoReceiver, msgToSend))
-        {
-            printf("mp non envoyé, erreur au send\n");
-            return 0;
-        }
-        printf("Envoi du message de %s au client %s.\n", pseudoSender, pseudoReceiver);
-        return 1;
+        perror("Erreur au send");
+        exit(-1);
     }
-    return 0;
 }
 
 /*
- * Start routine de pthread_create()
+ * Fonction pour le thread d'envoi
  */
-void *communication(void *clientParam)
+void *sendingForThread()
 {
-    int isEnd = 0;
-    int numClient = (long)clientParam;
-    char *pseudoSender = tabClient[numClient].pseudo;
-
     while (!isEnd)
     {
-        // Réception du message
-        char *msgReceived = (char *)malloc(sizeof(char) * 100);
-        receiving(tabClient[numClient].dSC, msgReceived, sizeof(char) * 100);
-        printf("\nMessage recu: %s \n", msgReceived);
+        /*Saisie du message au clavier*/
+        char *m = (char *)malloc(sizeof(char) * 100);
+        fgets(m, 100, stdin);
 
-        // On verifie si le client veut terminer la communication
-        isEnd = endOfCommunication(msgReceived);
+        // On vérifie si le client veut quitter la communication
+        isEnd = endOfCommunication(m);
 
-        // On vérifie si le client utilise une des commandes
-        char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
-        strcpy(msgToVerif, msgReceived);
-        if (useOfCommand(msgToVerif, pseudoSender))
-        {
-            continue;
-        }
-
-        // Ajout du pseudo de l'expéditeur devant le message à envoyer
-        char *msgToSend = (char *)malloc(sizeof(char) * 115);
-        strcat(msgToSend, pseudoSender);
-        strcat(msgToSend, " : ");
-        strcat(msgToSend, msgReceived);
-
-        // Envoi du message aux autres clients
-        printf("Envoi du message aux %ld clients. \n", nbClient - 1);
-        sending(tabClient[numClient].dSC, msgToSend);
+        // Envoi
+        sending(m);
+        free(m);
     }
-
-    // Fermeture du socket client
-    pthread_mutex_lock(&mutex);
-    nbClient = nbClient - 1;
-    tabClient[numClient].isOccupied = 0;
-    pthread_mutex_unlock(&mutex);
-    shutdown(tabClient[numClient].dSC, 2);
-
-    // On relache le sémaphore
-    sem_post(&semaphore);
-
+    shutdown(dS, 2);
     return NULL;
 }
 
 /*
- * _____________________ MAIN _____________________
+ * Receptionne un message d'une socket et teste que tout se passe bien
+ * Paramètres : int dS : la socket
+ *              char * msg : message à recevoir
+ *              ssize_t size : taille maximum du message à recevoir
  */
-// argv[1] = port
+void receiving(char *rep, ssize_t size)
+{
+    if (recv(dS, rep, size, 0) == -1)
+    {
+        printf("** fin de la communication **\n");
+        exit(-1);
+    }
+}
+
+/*
+ * Fonction pour le thread de réception
+ */
+void *receivingForThread()
+{
+    while (!isEnd)
+    {
+        char *r = (char *)malloc(sizeof(char) * 100);
+        receiving(r, sizeof(char) * 100);
+        // strcpy(r, strcat(r, "\n4 > "));
+        printf("%s", r);
+        free(r);
+    }
+    shutdown(dS, 2);
+    return NULL;
+}
+
+/* Signal Handler for SIGINT */
+void sigintHandler(int sig_num)
+{
+    printf("\nFin du programme avec Ctrl + C \n");
+    if (!boolConnect)
+    {
+        char *myPseudoEnd = (char *)malloc(sizeof(char) * 12);
+        myPseudoEnd = "FinClient";
+        sending(myPseudoEnd);
+    }
+    sleep(0.2);
+    sending("** a quitté la communication **\n");
+    exit(1);
+}
+
+// argv[1] = adresse ip
+// argv[2] = port
 int main(int argc, char *argv[])
 {
-    // Verification du nombre de paramètres
-    if (argc < 2)
+    if (argc < 3)
     {
-        perror("Erreur : Lancez avec ./serveur [votre_port] ");
-        exit(-1);
+        perror("Erreur : Lancez avec ./client [votre_ip] [votre_port] ");
+        return -1;
     }
     printf("Début programme\n");
 
     // Création de la socket
-    int dS = socket(PF_INET, SOCK_STREAM, 0);
-    if (dS < 0)
+    dS = socket(PF_INET, SOCK_STREAM, 0);
+    if (dS == -1)
     {
-        perror("Problème de création de socket serveur");
-        exit(-1);
+        perror("Problème de création de socket client\n");
+        return -1;
     }
     printf("Socket Créé\n");
 
     // Nommage de la socket
-    struct sockaddr_in ad;
-    ad.sin_family = AF_INET;
-    ad.sin_addr.s_addr = INADDR_ANY;
-    ad.sin_port = htons(atoi(argv[1]));
-    if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
+    struct sockaddr_in aS;
+    aS.sin_family = AF_INET;
+    inet_pton(AF_INET, argv[1], &(aS.sin_addr));
+    aS.sin_port = htons(atoi(argv[2]));
+    socklen_t lgA = sizeof(struct sockaddr_in);
+
+    // Envoi d'une demande de connexion
+    printf("Connection en cours...\n");
+    if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
     {
-        perror("Erreur lors du nommage de la socket");
+        perror("Problème de connexion au serveur\n");
         exit(-1);
     }
-    printf("Socket nommée\n");
+    printf("Socket connectée\n");
 
-    // Initialisation du sémaphore
-    sem_init(&semaphore, PTHREAD_PROCESS_SHARED, MAX_CLIENT);
+    // Fin avec Ctrl + C
+    signal(SIGINT, sigintHandler);
 
-    // Passage de la socket en mode écoute
-    if (listen(dS, 7) < 0)
+    // Saisie du pseudo du client au clavier
+    char *myPseudo = (char *)malloc(sizeof(char) * 12);
+    printf("Votre pseudo (maximum 11 caractères):\n");
+    fgets(myPseudo, 12, stdin);
+
+    // Envoie du pseudo
+    sending(myPseudo);
+
+    char *repServeur = (char *)malloc(sizeof(char) * 60);
+    // Récéption de la réponse du serveur
+    receiving(repServeur, sizeof(char) * 60);
+    printf("%s\n", repServeur);
+
+    while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
     {
-        perror("Problème au niveau du listen");
+        // Saisie du pseudo du client au clavier
+        printf("Votre pseudo (maximum 11 caractères)\n");
+        fgets(myPseudo, 12, stdin);
+
+        // Envoie du pseudo
+        sending(myPseudo);
+
+        // Récéption de la réponse du serveur
+        receiving(repServeur, sizeof(char) * 60);
+        printf("%s\n", repServeur);
+    }
+    free(myPseudo);
+    printf("Connection complète\n");
+    boolConnect = 1;
+
+    //_____________________ Communication _____________________
+    // Création des threads
+    pthread_t thread_sendind;
+    pthread_t thread_receiving;
+
+    if (pthread_create(&thread_sendind, NULL, sendingForThread, 0) < 0)
+    {
+        perror("Erreur de création de thread d'envoi client\n");
         exit(-1);
     }
-    printf("Mode écoute\n");
 
-    while (1)
+    if (pthread_create(&thread_receiving, NULL, receivingForThread, 0) < 0)
     {
-        int dSC;
-        // Vérifions si on peut accepter un client
-        // On attends la disponibilité du sémaphore
-        sem_wait(&semaphore);
-
-        // Acceptons une connexion
-        struct sockaddr_in aC;
-        socklen_t lg = sizeof(struct sockaddr_in);
-        dSC = accept(dS, (struct sockaddr *)&aC, &lg);
-        if (dSC < 0)
-        {
-            perror("Problème lors de l'acceptation du client\n");
-            exit(-1);
-        }
-        printf("Client %ld connecté\n", nbClient);
-
-        // Réception du pseudo
-        char *pseudo = (char *)malloc(sizeof(char) * 100);
-        receiving(dSC, pseudo, sizeof(char) * 12);
-        pseudo = strtok(pseudo, "\n");
-
-        while (verifPseudo(pseudo))
-        {
-            send(dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
-            receiving(dSC, pseudo, sizeof(char) * 12);
-            pseudo = strtok(pseudo, "\n");
-        }
-
-        // Enregistrement du client
-        long numClient = giveNumClient();
-        pthread_mutex_lock(&mutex);
-        tabClient[numClient].isOccupied = 1;
-        tabClient[numClient].dSC = dSC;
-        tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
-        strcpy(tabClient[numClient].pseudo, pseudo);
-        pthread_mutex_unlock(&mutex);
-
-        // On envoie un message pour dire au client qu'il est bien connecté
-        char *repServ = (char *)malloc(sizeof(char) * 100);
-        repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
-        sendingDM(pseudo, repServ);
-
-        // On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-        strcat(pseudo, " a rejoint la communication\n");
-        sending(dSC, pseudo);
-        free(pseudo);
-
-        //_____________________ Communication _____________________
-        if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
-        {
-            perror("Erreur thread create");
-        }
-
-        // On a un client en plus sur le serveur, on incrémente
-        nbClient += 1;
-        printf("Clients connectés : %ld\n", nbClient);
+        perror("Erreur de création de thread réception client\n");
+        exit(-1);
     }
-    shutdown(dS, 2);
-    sem_destroy(&semaphore);
+
+    pthread_join(thread_sendind, NULL);
+    pthread_join(thread_receiving, NULL);
+
     printf("Fin du programme\n");
 }
