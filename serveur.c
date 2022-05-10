@@ -1,6 +1,6 @@
 /*
 La commande /aide n'est pas totalement implémentée. 
-Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'éexécution de la commande
+Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'exécution de la commande
 Veuillez trouver le diagramme de Séquence sur ce lien :
 //www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00 
 */
@@ -279,6 +279,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 			i++;
 		}
 		return 1;
+	}
+	else if(strcmp(strToken, "/file") == 0)
+	{
+		
 	}
     return 0;
 }
