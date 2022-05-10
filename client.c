@@ -6,8 +6,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
-// ################################## Ne sers a rien ################################################################
-#define MAX_LENGTH 10
 
 int isEnd = 0;
 int dS = -1;
