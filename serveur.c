@@ -12,6 +12,7 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
+#include <signal.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -37,6 +38,7 @@ pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
 
 #define TAILLE_MAX 1000
+int dS = 0;
 
 // Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
@@ -357,6 +359,28 @@ void *communication(void *clientParam)
     return NULL;
 }
 
+/* Signal Handler for SIGINT */
+void sigintHandler(int sig_num)
+{
+    printf("\nFin du serveur\n");
+    if(dS!=0){
+        sending(dS, "LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
+        int i = 0;
+        while (i < MAX_CLIENT)
+        {
+            if (tabClient[i].isOccupied)
+            {
+                endOfThread(i);
+            }
+            i += 1;
+        }
+        shutdown(dS, 2);
+        sem_destroy(&semaphore);
+        sem_destroy(&semaphoreThread);
+    }
+    exit(1);
+}
+
 /*
  * _____________________ MAIN _____________________
  */
@@ -371,8 +395,11 @@ int main(int argc, char *argv[])
     }
     printf("Début programme\n");
 
+    // Fin avec Ctrl + C
+    signal(SIGINT, sigintHandler);
+
     // Création de la socket
-    int dS = socket(PF_INET, SOCK_STREAM, 0);
+    dS = socket(PF_INET, SOCK_STREAM, 0);
     if (dS < 0)
     {
         perror("Problème de création de socket serveur");
@@ -467,8 +494,5 @@ int main(int argc, char *argv[])
         nbClient += 1;
         printf("Clients connectés : %ld\n", nbClient);
     }
-    shutdown(dS, 2);
-    sem_destroy(&semaphore);
-    sem_destroy(&semaphoreThread);
     printf("Fin du programme\n");
 }
