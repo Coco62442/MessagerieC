@@ -210,7 +210,7 @@ int useOfCommand(char *msg, char *pseudoSender)
         free(msgToSend);
         return 1;
     }
-    else if (strcmp(strToken, "/isConnecte") == 0)
+    else if (strcmp(strToken, "/estConnecte") == 0)
     {
         // Récupération du pseudo
         char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
