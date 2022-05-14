@@ -21,8 +21,11 @@ struct Client
 {
 	int isOccupied;
 	long dSC;
-	long dSCF;
 	char *pseudo;
+	long dSCF;
+	char *nomFichier;
+	int tailleFichier;
+	pthread_t copieFichier;
 };
 
 /*
@@ -35,6 +38,7 @@ struct Client
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
+int dS;
 
 #define TAILLE_MAX 1000
 
@@ -44,6 +48,8 @@ sem_t semaphore;
 sem_t semaphoreThread;
 // Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
+// Création du mutex pour la copie de fichier
+pthread_mutex_t mutexFichier;
 
 /*
  * Fonctions pour gérer les indices du tableaux de clients
@@ -161,6 +167,57 @@ int endOfCommunication(char *msg)
 	return 0;
 }
 
+void *copieFichier(void *clientIndex) {
+	pthread_mutex_lock(&mutexFichier);
+	int i = (long) clientIndex;
+
+	// Acceptons une connexion
+	struct sockaddr_in aC;
+	socklen_t lg = sizeof(struct sockaddr_in);
+	long dSCF = accept(dS, (struct sockaddr *)&aC, &lg);
+	if (dSCF < 0)
+	{
+		perror("Problème lors de l'acceptation du client pour les fichiers\n");
+		exit(-1);
+	}
+
+	tabClient[i].dSCF = dSCF;
+
+	// Début réception du fichier
+	
+	char *buffer = malloc(tabClient[i].tailleFichier);
+	int returnCode;
+	int index;
+
+	char *emplacementFichier = malloc(sizeof(char) * 30);
+	strcat(emplacementFichier, "Fichier/");
+	strcat(emplacementFichier, tabClient[i].nomFichier);
+	FILE * stream = fopen(emplacementFichier, "w" );
+	if ( stream == NULL ) {
+		fprintf( stderr, "Cannot open file for writing\n" );
+		exit( -1 );
+	}
+
+	receiving(tabClient[i].dSCF, buffer, tabClient[i].tailleFichier);
+	printf("%s\n", buffer);
+
+	if ( 1 != fwrite( buffer, tabClient[i].tailleFichier, 1, stream ) ) {
+		fprintf( stderr, "Cannot write block in file\n" );
+	}
+
+	returnCode = fclose( stream );
+	if ( returnCode == EOF ) {
+		fprintf( stderr, "Cannot close file\n" );
+		exit( -1 );
+	}
+
+	free(buffer);
+	free(emplacementFichier);
+	pthread_mutex_unlock(&mutexFichier);
+
+	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
+}
+
 /*
  * Permet de JOIN les threads terminés
  * Paramètre : int numClient : indice du thred à join
@@ -238,30 +295,30 @@ int useOfCommand(char *msg, char *pseudoSender)
 	else if (strcmp(strToken, "/aide\n") == 0)
     {
         // Envoie de l'aide au client, un message par ligne
-        FILE* fichierCom = NULL;
-        char *chaine = (char *)malloc(sizeof(char) * 100);
-
+        FILE *fichierCom = NULL;
         fichierCom = fopen("commande.txt", "r");
+        fseek(fichierCom, 0, SEEK_END);
+        int length = ftell(fichierCom);
+        fseek(fichierCom, 0, SEEK_SET);
 
         if (fichierCom != NULL)
         {
+            char *chaine = malloc(100);
+            char *toutFichier = malloc(length);
             while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
-				char *chaineToSend = (char *)malloc(sizeof(char) * 100);
-				strcpy(chaineToSend, chaine);
-				sendingDM(pseudoSender, chaineToSend);
-				sleep(0.7);
-				free(chaineToSend);
+                strcat(toutFichier, chaine);
             }
-            fclose(fichierCom);
-			sendingDM(pseudoSender, "\n");
+            sendingDM(pseudoSender, toutFichier);
+            free(chaine);
+            free(toutFichier);
         }
         else
         {
             // On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
             printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
         }
-		free(chaine);
+        fclose(fichierCom);
         return 1;
     }
 	else if(strcmp(strToken, "/enLigne\n") == 0)
@@ -281,19 +338,32 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		return 1;
 	}
-	else if(strcmp(strToken, "/file\n") == 0)
+	else if(strcmp(strToken, "/fichier\n") == 0)
 	{
-		int i = 0;
-		long dSC;
-		while (i < MAX_CLIENT)
+		long i = 0;
+		while (i < nbClient+1 && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) != 0)
 		{
-			if (tabClient[i].isOccupied == 1 && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-			{
-				dSC = tabClient[i].dSC;
-			}
-			i ++;
+			i++;
+		}
+		if (i == nbClient+1)
+		{
+			perror("Pseudo pas trouvé");
+			exit(-1);
+		}
+
+		long dSC = tabClient[i].dSC;
+
+		// Réception des informations du fichier
+		receiving(dSC, tabClient[i].tailleFichier + "0", sizeof(int));
+		receiving(dSC, tabClient[i].nomFichier, sizeof(char)*100);
+		
+
+		if (pthread_create(&tabClient[i].copieFichier, NULL, copieFichier, (void *) i) == -1)
+		{
+			perror("Erreur thread create");
 		}
 		
+		return 1;
 	}
     return 0;
 }
@@ -322,6 +392,7 @@ void *communication(void *clientParam)
 		strcpy(msgToVerif, msgReceived);
         if (useOfCommand(msgToVerif, pseudoSender))
         {
+			free(msgReceived);
             continue;
         }
 
@@ -370,7 +441,7 @@ int main(int argc, char *argv[])
 	printf("Début programme\n");
 
 	// Création de la socket
-	int dS = socket(PF_INET, SOCK_STREAM, 0);
+	dS = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS < 0)
 	{
 		perror("Problème de création de socket serveur");
