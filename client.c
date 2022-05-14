@@ -86,6 +86,53 @@ void send_file(FILE *fp)
 }
 
 /*
+ * Reçois le fichier demandé initialement au serveur
+ *      int dS : la socket du serveur
+ */
+void receiv_file()
+{
+    // Début réception du fichier
+	
+    int repServeurTaille = (char *)malloc(sizeof(char) * 100);
+    char *repServeurNom = (char *)malloc(sizeof(char) * 100);
+    // Réception de la réponse du serveur qui comporte la taille du fichier qui va être reçu
+    receiving(repServeurTaille, sizeof(int) * 100);
+    // et son nom
+    receiving(repServeurNom, sizeof(char)*100);
+
+	char *buffer = malloc(repServeurTaille);
+	int returnCode;
+	int index;
+
+	char *emplacementFichier = malloc(sizeof(char) * 30);
+	strcat(emplacementFichier, "Fichier/");
+	strcat(emplacementFichier, repServeurNom);
+
+	FILE * stream = fopen(emplacementFichier, "w" );
+	if ( stream == NULL ) {
+		fprintf( stderr, "Cannot open file for writing\n" );
+		exit( -1 );
+	}
+
+	if ( 1 != fwrite( buffer, repServeurTaille, 1, stream ) ) {
+		fprintf( stderr, "Cannot write block in file\n" );
+	}
+
+	returnCode = fclose( stream );
+	if ( returnCode == EOF ) {
+		fprintf( stderr, "Cannot close file\n" );
+		exit( -1 );
+	}
+
+	free(buffer);
+	free(emplacementFichier);
+	free(repServeurTaille);
+	free(repServeurNom);
+
+    printf("** Reception du fichier réussie **\n");
+}
+
+/*
  * Receptionne un message d'une socket et teste que tout se passe bien
  * Paramètres : int dS : la socket
  *              char * msg : message à recevoir
