@@ -39,8 +39,8 @@ Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
 int dS;
-
-#define TAILLE_MAX 1000
+char *allFichiers[5];
+int nbFichier = 0;
 
 // Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
@@ -113,6 +113,23 @@ void sending(int dS, char *msg)
 }
 
 /*
+ * Permet de récupérer le dSC pour un pseudo donné
+ * Renvoie -1 si le pseudo n'existe pas
+*/
+long pseudoTodSC(char *pseudo) {
+	int i = 0;
+	while (i < MAX_CLIENT)
+    {
+		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudo) == 0)
+		{
+			return tabClient[i].dSC;
+		}
+        i++;
+    }
+	return -1;
+}
+
+/*
  * Envoie un message en mp à un client en particulier
  * et teste que tout se passe bien
  * Paramètres : int dSC : destinataire du msg
@@ -121,8 +138,12 @@ void sending(int dS, char *msg)
 void sendingDM(char *pseudoReceiver, char *msg)
 {
     int i = 0;
-    while (i < MAX_CLIENT && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) != 0)
+    while (i < MAX_CLIENT)
     {
+		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) == 0)
+		{
+			break;
+		}
         i++;
     }
     if (i == MAX_CLIENT)
@@ -213,6 +234,8 @@ void *copieFichier(void *clientIndex) {
 
 	free(buffer);
 	free(emplacementFichier);
+	allFichiers[nbFichier] = tabClient[i].nomFichier;
+	nbFichier++;
 	pthread_mutex_unlock(&mutexFichier);
 
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
@@ -340,17 +363,20 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if(strcmp(strToken, "/fichier\n") == 0)
 	{
-		long i = 0;
-		while (i < nbClient+1 && tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) != 0)
+		int i = 0;
+		while (i < MAX_CLIENT)
 		{
+			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
+			{
+				break;
+			}
 			i++;
 		}
-		if (i == nbClient+1)
+		if (i == MAX_CLIENT)
 		{
 			perror("Pseudo pas trouvé");
 			exit(-1);
 		}
-
 		long dSC = tabClient[i].dSC;
 
 		// Réception des informations du fichier
@@ -365,6 +391,33 @@ int useOfCommand(char *msg, char *pseudoSender)
 		
 		return 1;
 	}
+	else if (strcmp(strToken, "telecharger\n"))
+	{
+		char *rep = malloc(sizeof(char) * 100);
+		for (int i = 0; i < nbFichier; i++)
+		{
+			strcat(rep, i + "0");
+			strcat(rep, "\t");
+			strcat(rep, allFichiers[i]);
+			strcat(rep, "\n");
+		}
+		sendingDM(pseudoSender, rep);
+		free(rep);
+
+		long dSC = pseudoTodSC(pseudoSender);
+		if (dSC == -1)
+		{
+			perror("Pseudo introuvé\n");
+			exit(-1);
+		}
+		
+		char *numFichier = malloc(sizeof(int));
+		receiving(dSC, numFichier, sizeof(int));
+
+		
+		
+	}
+	
     return 0;
 }
 
