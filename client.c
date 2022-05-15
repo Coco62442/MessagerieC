@@ -115,7 +115,7 @@ void send_file(char *filename)
  */
 int useOfCommand(char *msg)
 {
-    if (strcmp(msg, "/déposer") == 0)
+    if (strcmp(msg, "/déposer\n") == 0)
     {
         send_file("test.txt");
         return 1;
