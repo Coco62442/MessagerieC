@@ -103,7 +103,6 @@ void *sendFileForThread(void *filename)
     // Envoi de la taille du fichier, puis de son nom
     sending(length);
     sendng(filename);
-    
 
     // Création de la socket
     int dS_file = socket(PF_INET, SOCK_STREAM, 0);
