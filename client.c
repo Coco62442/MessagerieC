@@ -47,9 +47,9 @@ void sending(char *msg)
 void *sendFileForThread(void *filename)
 {
     char *path = malloc(100);
-    strcat(path, "./fichiers_client/");
-    strcat(path, filename);
-    FILE *stream = fopen(filename, "r");
+    strcat(path, "./fichiers_client/test.txt");
+    // strcat(path, filename);
+    FILE *stream = fopen(path, "r");
     if (stream == NULL)
     {
         fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
