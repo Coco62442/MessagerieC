@@ -20,7 +20,7 @@ struct sockaddr_in aS;
  * Paramètres : char ** msg : message du client à vérifier
  * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
  */
-endOfCommunication(char *msg)
+int endOfCommunication(char *msg)
 {
     if (strcmp(msg, "/fin\n") == 0)
     {
@@ -66,28 +66,6 @@ void *sendingForThread()
     return NULL;
 }
 
-/*
- * Envoie le fichier donné en paramètre au serveur
- * Paramètres : FILE *fp : le fichier à envoyer
- *              int dS : la socket du serveur
- */
-void send_file(char *filename)
-{
-    pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
-    // int n;
-    // char data[SIZE] = {0};
-
-    // while (fgets(data, SIZE, fp) != NULL)
-    // {
-    //     if (send(dS, data, sizeof(data), 0) == -1)
-    //     {
-    //         perror("[-]Error in sending file.");
-    //         exit(-1);
-    //     }
-    //     bzero(data, SIZE);
-    // }
-}
-
 void *sendFileForThread(void *filename)
 {
     FILE *stream = fopen(filename, "r");
@@ -101,15 +79,16 @@ void *sendFileForThread(void *filename)
     fseek(stream, 0, SEEK_SET);
 
     // Envoi de la taille du fichier, puis de son nom
-    sending(length);
-    sendng(filename);
+    char l = length + '0';
+    sending(&l);
+    sending(filename);
 
     // Création de la socket
     int dS_file = socket(PF_INET, SOCK_STREAM, 0);
     if (dS_file == -1)
     {
         perror("[ENVOI FICHIER] Problème de création de socket client\n");
-        return -1;
+        exit(-1);
     }
     printf("[ENVOI FICHIER] Socket Créé\n");
 
@@ -135,8 +114,29 @@ void *sendFileForThread(void *filename)
     sending(toutFichier);
     free(chaine);
     free(toutFichier);
-    free(length);
     fclose(stream);
+}
+
+/*
+ * Envoie le fichier donné en paramètre au serveur
+ * Paramètres : FILE *fp : le fichier à envoyer
+ *              int dS : la socket du serveur
+ */
+void send_file(char *filename)
+{
+    pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
+    // int n;
+    // char data[SIZE] = {0};
+
+    // while (fgets(data, SIZE, fp) != NULL)
+    // {
+    //     if (send(dS, data, sizeof(data), 0) == -1)
+    //     {
+    //         perror("[-]Error in sending file.");
+    //         exit(-1);
+    //     }
+    //     bzero(data, SIZE);
+    // }
 }
 
 /*

@@ -12,6 +12,7 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -22,10 +23,19 @@ struct Client
     int isOccupied;
     long dSC;
     char *pseudo;
-    long dSCF;
+    long dSCFC;
+    long dSCFE;
     char *nomFichier;
     int tailleFichier;
-    pthread_t copieFichier;
+};
+
+typedef struct Fichier Fichier;
+struct Fichier
+{
+    int emplacementDisponible;
+    char *nomFichier;
+    long tailleFichier;
+    char *pseudo;
 };
 
 /*
@@ -35,11 +45,12 @@ struct Client
  * - nbClient = nombre de clients actuellement connectés
  */
 #define MAX_CLIENT 3
+#define MAX_FICHIER 4
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
+Fichier tabFichier[MAX_FICHIER];
 long nbClient = 0;
 int dS;
-char *allFichiers[5];
 int nbFichier = 0;
 
 // Création du sémaphore pour gérer le nombre de client
@@ -48,8 +59,6 @@ sem_t semaphore;
 sem_t semaphoreThread;
 // Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
-// Création du mutex pour la copie de fichier
-pthread_mutex_t mutexFichier;
 
 /*
  * Fonctions pour gérer les indices du tableaux de clients
@@ -68,6 +77,20 @@ int giveNumClient()
         i += 1;
     }
     exit(-1);
+}
+
+int giveNumFichier()
+{
+    int i = 0;
+    while (i < MAX_FICHIER)
+    {
+        if (!tabFichier[i].emplacementDisponible)
+        {
+            return i;
+        }
+        i += 1;
+    }
+    return -1;
 }
 
 /*
@@ -190,30 +213,29 @@ int endOfCommunication(char *msg)
     return 0;
 }
 
-void *copieFichier(void *clientIndex)
+void *copieFichierThread(void *clientIndex)
 {
-    pthread_mutex_lock(&mutexFichier);
     int i = (long)clientIndex;
 
     // Acceptons une connexion
     struct sockaddr_in aC;
     socklen_t lg = sizeof(struct sockaddr_in);
-    long dSCF = accept(dS, (struct sockaddr *)&aC, &lg);
-    if (dSCF < 0)
+    long dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
+    if (dSCFC < 0)
     {
         perror("Problème lors de l'acceptation du client pour les fichiers\n");
         exit(-1);
     }
 
-    tabClient[i].dSCF = dSCF;
+    tabClient[i].dSCFC = dSCFC;
 
     // Début réception du fichier
 
-    char *buffer = malloc(tabClient[i].tailleFichier);
+    char *buffer = (char *)malloc(tabClient[i].tailleFichier);
     int returnCode;
     int index;
 
-    char *emplacementFichier = malloc(sizeof(char) * 30);
+    char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
     strcat(emplacementFichier, "Fichier/");
     strcat(emplacementFichier, tabClient[i].nomFichier);
     FILE *stream = fopen(emplacementFichier, "w");
@@ -223,7 +245,7 @@ void *copieFichier(void *clientIndex)
         exit(-1);
     }
 
-    receiving(tabClient[i].dSCF, buffer, tabClient[i].tailleFichier);
+    receiving(tabClient[i].dSCFC, buffer, tabClient[i].tailleFichier);
     printf("%s\n", buffer);
 
     if (1 != fwrite(buffer, tabClient[i].tailleFichier, 1, stream))
@@ -240,11 +262,44 @@ void *copieFichier(void *clientIndex)
 
     free(buffer);
     free(emplacementFichier);
-    allFichiers[nbFichier] = tabClient[i].nomFichier;
+    int j = giveNumFichier();
+    tabFichier[j].emplacementDisponible = 1;
+    tabFichier[j].nomFichier = tabClient[i].nomFichier;
+    tabFichier[j].tailleFichier = tabClient[i].tailleFichier;
     nbFichier++;
-    pthread_mutex_unlock(&mutexFichier);
 
     sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
+}
+
+void *envoieFichierThread(void *numFichier)
+{
+    long i = (long)numFichier;
+
+    int returnCode;
+    int count;
+
+    FILE *stream = fopen(tabFichier[i].nomFichier, "r");
+    if (stream == NULL)
+    {
+        fprintf(stderr, "Cannot open file for reading\n");
+        exit(-1);
+    }
+
+    char *buffer = (char *)malloc(sizeof(char) * tabFichier[i].tailleFichier);
+    if (tabFichier[i].tailleFichier != fread(buffer, 1, tabFichier[i].tailleFichier, stream))
+    {
+        fprintf(stderr, "Cannot read blocks in file\n");
+    }
+
+    returnCode = fclose(stream);
+    if (returnCode == EOF)
+    {
+        fprintf(stderr, "Cannot close file\n");
+        exit(-1);
+    }
+
+    printf("%s\n", buffer);
+    sendingDM(tabFichier[i].pseudo, buffer);
 }
 
 /*
@@ -332,8 +387,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 
         if (fichierCom != NULL)
         {
-            char *chaine = malloc(100);
-            char *toutFichier = malloc(length);
+            char *chaine = (char *)malloc(100);
+            char *toutFichier = (char *)malloc(length);
             while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
             {
                 strcat(toutFichier, chaine);
@@ -369,7 +424,7 @@ int useOfCommand(char *msg, char *pseudoSender)
     }
     else if (strcmp(strToken, "/fichier\n") == 0)
     {
-        int i = 0;
+        long i = 0;
         while (i < MAX_CLIENT)
         {
             if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -389,7 +444,9 @@ int useOfCommand(char *msg, char *pseudoSender)
         receiving(dSC, tabClient[i].tailleFichier + "0", sizeof(int));
         receiving(dSC, tabClient[i].nomFichier, sizeof(char) * 100);
 
-        if (pthread_create(&tabClient[i].copieFichier, NULL, copieFichier, (void *)i) == -1)
+        pthread_t copieFichier;
+
+        if (pthread_create(&copieFichier, NULL, copieFichierThread, &i) == -1)
         {
             perror("Erreur thread create");
         }
@@ -398,12 +455,14 @@ int useOfCommand(char *msg, char *pseudoSender)
     }
     else if (strcmp(strToken, "telecharger\n"))
     {
-        char *rep = malloc(sizeof(char) * 100);
+        char *rep = (char *)malloc(sizeof(char) * 100);
         for (int i = 0; i < nbFichier; i++)
         {
             strcat(rep, i + "0");
             strcat(rep, "\t");
-            strcat(rep, allFichiers[i]);
+            strcat(rep, tabFichier[i].nomFichier);
+            strcat(rep, "\t");
+            strcat(rep, tabFichier[i].tailleFichier + "0");
             strcat(rep, "\n");
         }
         sendingDM(pseudoSender, rep);
@@ -416,8 +475,32 @@ int useOfCommand(char *msg, char *pseudoSender)
             exit(-1);
         }
 
-        char *numFichier = malloc(sizeof(int));
+        char *numFichier = (char *)malloc(sizeof(int));
         receiving(dSC, numFichier, sizeof(int));
+
+        // Envoie du nom du fichier sélectionné
+        sendingDM(pseudoSender, tabFichier[numFichier - "0"].nomFichier);
+
+        // Récupération de la taille du fichier
+        struct stat sb;
+
+        if (stat(tabFichier[numFichier - "0"].nomFichier, &sb) == -1)
+        {
+            perror("stat");
+            exit(EXIT_FAILURE);
+        }
+
+        // Envoie de la taille du fichier
+        char *tailleFichier = malloc(sizeof(int));
+        tailleFichier = (char *)sb.st_size;
+        sendingDM(pseudoSender, tailleFichier);
+
+        pthread_t envoieFichier;
+
+        if (pthread_create(&envoieFichier, NULL, envoieFichierThread, (void *)(numFichier - "0")) == -1)
+        {
+            perror("Erreur thread create");
+        }
     }
 
     return 0;
