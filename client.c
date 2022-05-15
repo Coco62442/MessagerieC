@@ -46,6 +46,9 @@ void sending(char *msg)
 
 void *sendFileForThread(void *filename)
 {
+    char *path = malloc(100);
+    strcat(path, "./fichiers_client/");
+    strcat(path, filename);
     FILE *stream = fopen(filename, "r");
     if (stream == NULL)
     {
