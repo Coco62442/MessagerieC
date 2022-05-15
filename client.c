@@ -90,6 +90,21 @@ void send_file(char *filename)
 
 void *sendFileForThread(void *filename)
 {
+    FILE *stream = fopen(filename, "r");
+    if (stream == NULL)
+    {
+        fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
+        exit(-1);
+    }
+    fseek(stream, 0, SEEK_END);
+    int length = ftell(stream);
+    fseek(stream, 0, SEEK_SET);
+
+    // Envoi de la taille du fichier, puis de son nom
+    sending(length);
+    sendng(filename);
+    
+
     // Création de la socket
     int dS_file = socket(PF_INET, SOCK_STREAM, 0);
     if (dS_file == -1)
@@ -111,13 +126,18 @@ void *sendFileForThread(void *filename)
     }
     printf("[ENVOI FICHIER] Socket connectée\n");
 
-
-    FILE *stream = fopen(filename, "r");
-    if (stream == NULL)
+    // Lecture et stockage pour envoi du fichier
+    char *chaine = malloc(100);
+    char *toutFichier = malloc(length + 1);
+    while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
     {
-        fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
-        exit(-1);
+        strcat(toutFichier, chaine);
     }
+    sending(toutFichier);
+    free(chaine);
+    free(toutFichier);
+    free(length);
+    fclose(stream);
 }
 
 /*
