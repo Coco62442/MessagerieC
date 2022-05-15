@@ -44,28 +44,6 @@ void sending(char *msg)
     }
 }
 
-/*
- * Fonction pour le thread d'envoi
- */
-void *sendingForThread()
-{
-    while (!isEnd)
-    {
-        /*Saisie du message au clavier*/
-        char *m = (char *)malloc(sizeof(char) * 100);
-        fgets(m, 100, stdin);
-
-        // On vérifie si le client veut quitter la communication
-        isEnd = endOfCommunication(m);
-
-        // Envoi
-        sending(m);
-        free(m);
-    }
-    shutdown(dS, 2);
-    return NULL;
-}
-
 void *sendFileForThread(void *filename)
 {
     FILE *stream = fopen(filename, "r");
@@ -125,18 +103,52 @@ void *sendFileForThread(void *filename)
 void send_file(char *filename)
 {
     pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
-    // int n;
-    // char data[SIZE] = {0};
+}
 
-    // while (fgets(data, SIZE, fp) != NULL)
-    // {
-    //     if (send(dS, data, sizeof(data), 0) == -1)
-    //     {
-    //         perror("[-]Error in sending file.");
-    //         exit(-1);
-    //     }
-    //     bzero(data, SIZE);
-    // }
+/*
+ * Vérifie si le client souhaite utiliser une des commandes
+ * Paramètres : char *msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+ */
+int useOfCommand(char *msg)
+{
+    if (strcmp(msg, "/déposer") == 0)
+    {
+        send_file("test.txt");
+        return 1;
+    }
+    return 0;
+}
+
+/*
+ * Fonction pour le thread d'envoi
+ */
+void *sendingForThread()
+{
+    while (!isEnd)
+    {
+        /*Saisie du message au clavier*/
+        char *m = (char *)malloc(sizeof(char) * 100);
+        fgets(m, 100, stdin);
+
+        // On vérifie si le client veut quitter la communication
+        isEnd = endOfCommunication(m);
+
+        // On vérifie si le client utilise une des commandes
+        char *msgToVerif = (char *)malloc(sizeof(char) * strlen(m));
+        strcpy(msgToVerif, m);
+        if (useOfCommand(msgToVerif))
+        {
+            free(m);
+            continue;
+        }
+
+        // Envoi
+        sending(m);
+        free(m);
+    }
+    shutdown(dS, 2);
+    return NULL;
 }
 
 /*

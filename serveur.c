@@ -453,7 +453,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
         return 1;
     }
-    else if (strcmp(strToken, "telecharger\n"))
+    else if (strcmp(strToken, "/telecharger\n") == 0)
     {
         char *rep = (char *)malloc(sizeof(char) * 100);
         for (int i = 0; i < nbFichier; i++)
