@@ -7,9 +7,14 @@
 #include <signal.h>
 #include <unistd.h>
 
+#define SIZE 1024
+
+char *addrServeur;
 int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
+pthread_t thread_files;
+struct sockaddr_in aS;
 
 /*
  * Vérifie si un client souhaite quitter la communication
@@ -40,6 +45,101 @@ void sending(char *msg)
 	}
 }
 
+void *sendFileForThread(void *filename)
+{
+	// Création de la socket
+	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+	if (dS_file == -1)
+	{
+		perror("[ENVOI FICHIER] Problème de création de socket client\n");
+		exit(-1);
+	}
+	printf("[ENVOI FICHIER] Socket Créé\n");
+
+	// Nommage de la socket
+	aS.sin_family = AF_INET;
+	inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
+	aS.sin_port = htons(4000);
+	socklen_t lgA = sizeof(struct sockaddr_in);
+
+	// Envoi d'une demande de connexion
+	printf("[ENVOI FICHIER] Connection en cours...\n");
+	if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
+	{
+		perror("[ENVOI FICHIER] Problème de connexion au serveur\n");
+		exit(-1);
+	}
+	printf("[ENVOI FICHIER] Socket connectée\n");
+
+	char *path = malloc(100);
+	strcat(path, "./FichierClient/");
+	strcat(path, filename);
+	FILE *stream = fopen(path, "r");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
+		exit(-1);
+	}
+	fseek(stream, 0, SEEK_END);
+	int length = ftell(stream);
+	fseek(stream, 0, SEEK_SET);
+
+	// Envoi de la taille du fichier, puis de son nom
+	char l = length + '0';
+	if (send(dS_file, &l, strlen(&l) + 1, 0) == -1)
+	{
+		perror("Erreur au send");
+		exit(-1);
+	}
+	if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
+	{
+		perror("Erreur au send");
+		exit(-1);
+	}
+
+	// Lecture et stockage pour envoi du fichier
+	char *chaine = malloc(100);
+	char *toutFichier = malloc(length + 1);
+	while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+	{
+		strcat(toutFichier, chaine);
+	}
+	if (send(dS_file, toutFichier, strlen(toutFichier) + 1, 0) == -1)
+	{
+		perror("Erreur au send");
+		exit(-1);
+	}
+	free(chaine);
+	free(toutFichier);
+	fclose(stream);
+}
+
+/*
+ * Envoie le fichier donné en paramètre au serveur
+ * Paramètres : FILE *fp : le fichier à envoyer
+ *              int dS : la socket du serveur
+ */
+void send_file(char *filename)
+{
+	pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
+}
+
+/*
+ * Vérifie si le client souhaite utiliser une des commandes
+ * Paramètres : char *msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+ */
+int useOfCommand(char *msg)
+{
+	if (strcmp(msg, "/déposer\n") == 0)
+	{
+		sending("/déposer\n");
+		send_file("test.txt");
+		return 1;
+	}
+	return 0;
+}
+
 /*
  * Fonction pour le thread d'envoi
  */
@@ -53,6 +153,15 @@ void *sendingForThread()
 
 		// On vérifie si le client veut quitter la communication
 		isEnd = endOfCommunication(m);
+
+		// On vérifie si le client utilise une des commandes
+		char *msgToVerif = (char *)malloc(sizeof(char) * strlen(m));
+		strcpy(msgToVerif, m);
+		if (useOfCommand(msgToVerif))
+		{
+			free(m);
+			continue;
+		}
 
 		// Envoi
 		sending(m);
@@ -78,8 +187,8 @@ void receiving(char *rep, ssize_t size)
 }
 
 /*
-* Fonction pour le thread de réception
-*/
+ * Fonction pour le thread de réception
+ */
 void *receivingForThread()
 {
 	while (!isEnd)
@@ -97,15 +206,16 @@ void *receivingForThread()
 /* Signal Handler for SIGINT */
 void sigintHandler(int sig_num)
 {
-    printf("\nFin du programme avec Ctrl + C \n");
-    if(!boolConnect){
-        char *myPseudoEnd = (char *)malloc(sizeof(char) * 12);
-        myPseudoEnd = "FinClient";
-        sending(myPseudoEnd);
-    } 
-    sleep(0.2);
-    sending("** a quitté la communication **\n");
-    exit(1);
+	printf("\nFin du programme avec Ctrl + C \n");
+	if (!boolConnect)
+	{
+		char *myPseudoEnd = (char *)malloc(sizeof(char) * 12);
+		myPseudoEnd = "FinClient";
+		sending(myPseudoEnd);
+	}
+	sleep(0.2);
+	sending("** a quitté la communication **\n");
+	exit(1);
 }
 
 // argv[1] = adresse ip
@@ -119,6 +229,8 @@ int main(int argc, char *argv[])
 	}
 	printf("Début programme\n");
 
+	addrServeur = argv[1];
+
 	// Création de la socket
 	dS = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS == -1)
@@ -129,7 +241,6 @@ int main(int argc, char *argv[])
 	printf("Socket Créé\n");
 
 	// Nommage de la socket
-	struct sockaddr_in aS;
 	aS.sin_family = AF_INET;
 	inet_pton(AF_INET, argv[1], &(aS.sin_addr));
 	aS.sin_port = htons(atoi(argv[2]));
@@ -145,7 +256,7 @@ int main(int argc, char *argv[])
 	printf("Socket connectée\n");
 
 	// Fin avec Ctrl + C
-    signal(SIGINT, sigintHandler);
+	signal(SIGINT, sigintHandler);
 
 	// Saisie du pseudo du client au clavier
 	char *myPseudo = (char *)malloc(sizeof(char) * 12);
@@ -156,8 +267,8 @@ int main(int argc, char *argv[])
 	sending(myPseudo);
 
 	char *repServeur = (char *)malloc(sizeof(char) * 60);
-	//Récéption de la réponse du serveur
-	receiving(repServeur, sizeof(char)*60);
+	// Récéption de la réponse du serveur
+	receiving(repServeur, sizeof(char) * 60);
 	printf("%s\n", repServeur);
 
 	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
@@ -169,14 +280,13 @@ int main(int argc, char *argv[])
 		// Envoie du pseudo
 		sending(myPseudo);
 
-		//Récéption de la réponse du serveur
-		receiving(repServeur, sizeof(char)*60);
+		// Récéption de la réponse du serveur
+		receiving(repServeur, sizeof(char) * 60);
 		printf("%s\n", repServeur);
 	}
 	free(myPseudo);
 	printf("Connection complète\n");
 	boolConnect = 1;
-	
 
 	//_____________________ Communication _____________________
 	// Création des threads

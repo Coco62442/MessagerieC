@@ -1,8 +1,8 @@
 /*
-La commande /aide n'est pas totalement implémentée. 
+La commande /aide n'est pas totalement implémentée.
 Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'exécution de la commande
 Veuillez trouver le diagramme de Séquence sur ce lien :
-//www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00 
+//www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
 */
 #include <stdio.h>
 #include <sys/socket.h>
@@ -104,10 +104,11 @@ int verifPseudo(char *pseudo)
 	int i = 0;
 	while (i < MAX_CLIENT)
 	{
-		if (tabClient[i].isOccupied && strcmp(pseudo, tabClient[i].pseudo) == 0) {
+		if (tabClient[i].isOccupied && strcmp(pseudo, tabClient[i].pseudo) == 0)
+		{
 			return 1;
 		}
-		
+
 		i++;
 	}
 	return 0;
@@ -121,34 +122,35 @@ int verifPseudo(char *pseudo)
  */
 void sending(int dS, char *msg)
 {
-    for (int i = 0; i < MAX_CLIENT; i++)
-    {
-        // On n'envoie pas au client qui a écrit le message
-        if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
-        {
-            if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
-            {
-                perror("Erreur au send");
-                exit(-1);
-            }
-        }
-    }
+	for (int i = 0; i < MAX_CLIENT; i++)
+	{
+		// On n'envoie pas au client qui a écrit le message
+		if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
+		{
+			if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
+			{
+				perror("Erreur au send");
+				exit(-1);
+			}
+		}
+	}
 }
 
 /*
  * Permet de récupérer le dSC pour un pseudo donné
  * Renvoie -1 si le pseudo n'existe pas
-*/
-long pseudoTodSC(char *pseudo) {
+ */
+long pseudoTodSC(char *pseudo)
+{
 	int i = 0;
 	while (i < MAX_CLIENT)
-    {
+	{
 		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudo) == 0)
 		{
 			return tabClient[i].dSC;
 		}
-        i++;
-    }
+		i++;
+	}
 	return -1;
 }
 
@@ -160,26 +162,26 @@ long pseudoTodSC(char *pseudo) {
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
-    int i = 0;
-    while (i < MAX_CLIENT)
-    {
+	int i = 0;
+	while (i < MAX_CLIENT)
+	{
 		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) == 0)
 		{
 			break;
 		}
-        i++;
-    }
-    if (i == MAX_CLIENT)
-    {
-        perror("Pseudo pas trouvé");
-        exit(-1);
-    }
-    long dSC = tabClient[i].dSC;
-    if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
-    {
-        perror("Erreur à l'envoi du mp");
-        exit(-1);
-    }
+		i++;
+	}
+	if (i == MAX_CLIENT)
+	{
+		perror("Pseudo pas trouvé");
+		exit(-1);
+	}
+	long dSC = tabClient[i].dSC;
+	if (send(dSC, msg, strlen(msg) + 1, 0) == -1)
+	{
+		perror("Erreur à l'envoi du mp");
+		exit(-1);
+	}
 }
 
 /*
@@ -211,47 +213,90 @@ int endOfCommunication(char *msg)
 	return 0;
 }
 
-void *copieFichierThread(void *clientIndex) {
-	int i = (long) clientIndex;
+void *copieFichierThread(void *clientIndex)
+{
+	int i = (long)clientIndex;
+
+	// Création de la socket
+	int dS = socket(PF_INET, SOCK_STREAM, 0);
+	if (dS < 0)
+	{
+		perror("[Fichier] Problème de création de socket serveur");
+		exit(-1);
+	}
+	printf("Socket [Fichier] Créé\n");
+
+	// Nommage de la socket
+	struct sockaddr_in ad;
+	ad.sin_family = AF_INET;
+	ad.sin_addr.s_addr = INADDR_ANY;
+	ad.sin_port = htons(4000);
+	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
+	{
+		perror("[Fichier] Erreur lors du nommage de la socket");
+		exit(-1);
+	}
+	printf("[Fichier] Socket nommée\n");
+
+	// Passage de la socket en mode écoute
+	if (listen(dS, 7) < 0)
+	{
+		perror("[Fichier] Problème au niveau du listen");
+		exit(-1);
+	}
+	printf("[Fichier] Mode écoute\n");
+
+	int dSCFC;
 
 	// Acceptons une connexion
 	struct sockaddr_in aC;
 	socklen_t lg = sizeof(struct sockaddr_in);
-	long dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
+	dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
 	if (dSCFC < 0)
 	{
-		perror("Problème lors de l'acceptation du client pour les fichiers\n");
+		perror("Problème lors de l'acceptation du client\n");
 		exit(-1);
 	}
 
 	tabClient[i].dSCFC = dSCFC;
 
+	// Réception des informations du fichier
+	printf("%s\n", tabClient[i].pseudo);
+	printf("%ld\n", tabClient[i].dSC);
+	receiving(tabClient[i].dSCFC, tabClient[i].tailleFichier + "0", sizeof(int));
+	printf("test2\n");
+	receiving(tabClient[i].dSCFC, tabClient[i].nomFichier, sizeof(char) * 100);
+	printf("test3\n");
+
 	// Début réception du fichier
-	
+
 	char *buffer = (char *)malloc(tabClient[i].tailleFichier);
 	int returnCode;
 	int index;
 
 	char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
-	strcat(emplacementFichier, "Fichier/");
+	strcat(emplacementFichier, "FichierServeur/");
 	strcat(emplacementFichier, tabClient[i].nomFichier);
-	FILE * stream = fopen(emplacementFichier, "w" );
-	if ( stream == NULL ) {
-		fprintf( stderr, "Cannot open file for writing\n" );
-		exit( -1 );
+	FILE *stream = fopen(emplacementFichier, "w");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "Cannot open file for writing\n");
+		exit(-1);
 	}
 
 	receiving(tabClient[i].dSCFC, buffer, tabClient[i].tailleFichier);
 	printf("%s\n", buffer);
 
-	if ( 1 != fwrite( buffer, tabClient[i].tailleFichier, 1, stream ) ) {
-		fprintf( stderr, "Cannot write block in file\n" );
+	if (1 != fwrite(buffer, tabClient[i].tailleFichier, 1, stream))
+	{
+		fprintf(stderr, "Cannot write block in file\n");
 	}
 
-	returnCode = fclose( stream );
-	if ( returnCode == EOF ) {
-		fprintf( stderr, "Cannot close file\n" );
-		exit( -1 );
+	returnCode = fclose(stream);
+	if (returnCode == EOF)
+	{
+		fprintf(stderr, "Cannot close file\n");
+		exit(-1);
 	}
 
 	free(buffer);
@@ -265,29 +310,32 @@ void *copieFichierThread(void *clientIndex) {
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
 }
 
-void *envoieFichierThread(void * numFichier)
+void *envoieFichierThread(void *numFichier)
 {
 	long i = (long)numFichier;
 
 	int returnCode;
-    int count;
+	int count;
 
-    FILE * stream = fopen( tabFichier[i].nomFichier, "r" );
-    if ( stream == NULL ) {
-        fprintf( stderr, "Cannot open file for reading\n" );
-        exit( -1 );
-    }
-
-	char *buffer = (char *)malloc(sizeof(char) * tabFichier[i].tailleFichier);
-	if ( tabFichier[i].tailleFichier != fread( buffer, 1, tabFichier[i].tailleFichier, stream ) ) {
-		fprintf( stderr, "Cannot read blocks in file\n" );
+	FILE *stream = fopen(tabFichier[i].nomFichier, "r");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "Cannot open file for reading\n");
+		exit(-1);
 	}
 
-    returnCode = fclose( stream );
-    if ( returnCode == EOF ) {
-        fprintf( stderr, "Cannot close file\n" );
-        exit( -1 );
-    }
+	char *buffer = (char *)malloc(sizeof(char) * tabFichier[i].tailleFichier);
+	if (tabFichier[i].tailleFichier != fread(buffer, 1, tabFichier[i].tailleFichier, stream))
+	{
+		fprintf(stderr, "Cannot read blocks in file\n");
+	}
+
+	returnCode = fclose(stream);
+	if (returnCode == EOF)
+	{
+		fprintf(stderr, "Cannot close file\n");
+		exit(-1);
+	}
 
 	printf("%s\n", buffer);
 	sendingDM(tabFichier[i].pseudo, buffer);
@@ -296,7 +344,7 @@ void *envoieFichierThread(void * numFichier)
 /*
  * Permet de JOIN les threads terminés
  * Paramètre : int numClient : indice du thred à join
-*/
+ */
 void endOfThread(int numclient)
 {
 	pthread_join(tabThread[numclient], 0);
@@ -310,42 +358,42 @@ void endOfThread(int numclient)
  */
 int useOfCommand(char *msg, char *pseudoSender)
 {
-    char *strToken = strtok(msg, " ");
-    if (strcmp(strToken, "/mp") == 0)
-    {
-        // Récupération du pseudo à qui envoyer le mp
-        char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
-        pseudoReceiver = strtok(NULL, " ");
-        if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
-        {
+	char *strToken = strtok(msg, " ");
+	if (strcmp(strToken, "/mp") == 0)
+	{
+		// Récupération du pseudo à qui envoyer le mp
+		char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
+		pseudoReceiver = strtok(NULL, " ");
+		if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
+		{
 			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
-            printf("Commande \"/mp\" mal utilisée\n");
-            return 0;
-        }
-        char *msg = (char *)malloc(sizeof(char) * 115);
-        msg = strtok(NULL, "");
-        if (msg == NULL)
-        {
-            printf("Commande \"/mp\" mal utilisée\n");
-            return 0;
-        }
-        // Préparation du message à envoyer
-        char *msgToSend = (char *)malloc(sizeof(char) * 115);
-        strcat(msgToSend, pseudoSender);
-        strcat(msgToSend, " vous chuchotte : ");
-        strcat(msgToSend, msg);
+			printf("Commande \"/mp\" mal utilisée\n");
+			return 0;
+		}
+		char *msg = (char *)malloc(sizeof(char) * 115);
+		msg = strtok(NULL, "");
+		if (msg == NULL)
+		{
+			printf("Commande \"/mp\" mal utilisée\n");
+			return 0;
+		}
+		// Préparation du message à envoyer
+		char *msgToSend = (char *)malloc(sizeof(char) * 115);
+		strcat(msgToSend, pseudoSender);
+		strcat(msgToSend, " vous chuchotte : ");
+		strcat(msgToSend, msg);
 
-        // Envoi du message au destinataire
-        printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
-        sendingDM(pseudoReceiver, msgToSend);
+		// Envoi du message au destinataire
+		printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
+		sendingDM(pseudoReceiver, msgToSend);
 		free(msgToSend);
-        return 1;
-    }
+		return 1;
+	}
 	else if (strcmp(strToken, "/isConnecte") == 0)
 	{
 		// Récupération du pseudo
-        char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
-        pseudoToCheck = strtok(NULL, " ");
+		char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
+		pseudoToCheck = strtok(NULL, " ");
 		pseudoToCheck = strtok(pseudoToCheck, "\n");
 
 		// Préparation du message à envoyer
@@ -368,35 +416,35 @@ int useOfCommand(char *msg, char *pseudoSender)
 		return 1;
 	}
 	else if (strcmp(strToken, "/aide\n") == 0)
-    {
-        // Envoie de l'aide au client, un message par ligne
-        FILE *fichierCom = NULL;
-        fichierCom = fopen("commande.txt", "r");
-        fseek(fichierCom, 0, SEEK_END);
-        int length = ftell(fichierCom);
-        fseek(fichierCom, 0, SEEK_SET);
+	{
+		// Envoie de l'aide au client, un message par ligne
+		FILE *fichierCom = NULL;
+		fichierCom = fopen("commande.txt", "r");
+		fseek(fichierCom, 0, SEEK_END);
+		int length = ftell(fichierCom);
+		fseek(fichierCom, 0, SEEK_SET);
 
-        if (fichierCom != NULL)
-        {
-            char *chaine = (char *)malloc(100);
-            char *toutFichier = (char *)malloc(length);
-            while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
-            {
-                strcat(toutFichier, chaine);
-            }
-            sendingDM(pseudoSender, toutFichier);
-            free(chaine);
-            free(toutFichier);
-        }
-        else
-        {
-            // On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
-            printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
-        }
-        fclose(fichierCom);
-        return 1;
-    }
-	else if(strcmp(strToken, "/enLigne\n") == 0)
+		if (fichierCom != NULL)
+		{
+			char *chaine = (char *)malloc(100);
+			char *toutFichier = (char *)malloc(length);
+			while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+			{
+				strcat(toutFichier, chaine);
+			}
+			sendingDM(pseudoSender, toutFichier);
+			free(chaine);
+			free(toutFichier);
+		}
+		else
+		{
+			// On affiche un message d'erreur si le fichier n'a pas réussi a être ouvert
+			printf("Impossible d\'ouvrir le fichier de commande pour l\'aide");
+		}
+		fclose(fichierCom);
+		return 1;
+	}
+	else if (strcmp(strToken, "/enLigne\n") == 0)
 	{
 		int i = 0;
 		while (i < MAX_CLIENT)
@@ -413,7 +461,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		return 1;
 	}
-	else if(strcmp(strToken, "/fichier\n") == 0)
+	else if (strcmp(strToken, "/déposer\n") == 0)
 	{
 		long i = 0;
 		while (i < MAX_CLIENT)
@@ -429,22 +477,19 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Pseudo pas trouvé");
 			exit(-1);
 		}
-		long dSC = tabClient[i].dSC;
 
-		// Réception des informations du fichier
-		receiving(dSC, tabClient[i].tailleFichier + "0", sizeof(int));
-		receiving(dSC, tabClient[i].nomFichier, sizeof(char)*100);
 		
+
 		pthread_t copieFichier;
 
-		if (pthread_create(&copieFichier, NULL, copieFichierThread, (void *) i) == -1)
+		if (pthread_create(&copieFichier, NULL, copieFichierThread, &i) == -1)
 		{
 			perror("Erreur thread create");
 		}
-		
+
 		return 1;
 	}
-	else if (strcmp(strToken, "telecharger\n"))
+	else if (strcmp(strToken, "/telecharger\n") == 0)
 	{
 		char *rep = (char *)malloc(sizeof(char) * 100);
 		for (int i = 0; i < nbFichier; i++)
@@ -452,7 +497,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			strcat(rep, i + "0");
 			strcat(rep, "\t");
 			strcat(rep, tabFichier[i].nomFichier);
-			strcat(rep , "\t");
+			strcat(rep, "\t");
 			strcat(rep, tabFichier[i].tailleFichier + "0");
 			strcat(rep, "\n");
 		}
@@ -465,7 +510,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Pseudo introuvé\n");
 			exit(-1);
 		}
-		
+
 		char *numFichier = (char *)malloc(sizeof(int));
 		receiving(dSC, numFichier, sizeof(int));
 
@@ -475,7 +520,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 		// Récupération de la taille du fichier
 		struct stat sb;
 
-		if (stat(tabFichier[numFichier - "0"].nomFichier, &sb) == -1) {
+		if (stat(tabFichier[numFichier - "0"].nomFichier, &sb) == -1)
+		{
 			perror("stat");
 			exit(EXIT_FAILURE);
 		}
@@ -492,8 +538,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Erreur thread create");
 		}
 	}
-	
-    return 0;
+
+	return 0;
 }
 
 /*
@@ -518,11 +564,11 @@ void *communication(void *clientParam)
 		// On vérifie si le client utilise une des commandes
 		char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
 		strcpy(msgToVerif, msgReceived);
-        if (useOfCommand(msgToVerif, pseudoSender))
-        {
+		if (useOfCommand(msgToVerif, pseudoSender))
+		{
 			free(msgReceived);
-            continue;
-        }
+			continue;
+		}
 
 		// Ajout du pseudo de l'expéditeur devant le message à envoyer
 		char *msgToSend = (char *)malloc(sizeof(char) * 115);
@@ -532,7 +578,7 @@ void *communication(void *clientParam)
 		free(msgReceived);
 
 		// Envoi du message aux autres clients
-		printf("Envoi du message aux %ld clients. \n", nbClient-1);
+		printf("Envoi du message aux %ld clients. \n", nbClient - 1);
 		sending(tabClient[numClient].dSC, msgToSend);
 		free(msgToSend);
 	}
@@ -543,9 +589,9 @@ void *communication(void *clientParam)
 	tabClient[numClient].isOccupied = 0;
 	pthread_mutex_unlock(&mutex);
 	shutdown(tabClient[numClient].dSC, 2);
-	
+
 	// On relache le sémaphore pour les clients en attente
-    sem_post(&semaphore);
+	sem_post(&semaphore);
 
 	// On incrémente le sémaphore des threads
 	sem_wait(&semaphoreThread);
@@ -591,7 +637,7 @@ int main(int argc, char *argv[])
 
 	// Initialisation du sémaphore pour gérer les clients
 	sem_init(&semaphore, PTHREAD_PROCESS_SHARED, MAX_CLIENT);
-	
+
 	// Initialisation du sémaphore pour gérer les threads
 	sem_init(&semaphoreThread, PTHREAD_PROCESS_SHARED, 1);
 
@@ -609,7 +655,7 @@ int main(int argc, char *argv[])
 		// Vérifions si on peut accepter un client
 		// On attends la disponibilité du sémaphore
 		sem_wait(&semaphore);
-		
+
 		// Acceptons une connexion
 		struct sockaddr_in aC;
 		socklen_t lg = sizeof(struct sockaddr_in);
@@ -625,15 +671,14 @@ int main(int argc, char *argv[])
 		char *pseudo = (char *)malloc(sizeof(char) * 100);
 		receiving(dSC, pseudo, sizeof(char) * 12);
 		pseudo = strtok(pseudo, "\n");
-		
+
 		while (verifPseudo(pseudo))
 		{
-			send(dSC, "Pseudo déjà existant\n",strlen("Pseudo déjà existant\n"), 0);
+			send(dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
 			receiving(dSC, pseudo, sizeof(char) * 12);
 			pseudo = strtok(pseudo, "\n");
 		}
 
-		
 		// Enregistrement du client
 		long numClient = giveNumClient();
 		pthread_mutex_lock(&mutex);
@@ -648,7 +693,8 @@ int main(int argc, char *argv[])
 		repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
 		sendingDM(pseudo, repServ);
 		// On vérifie que ce n'est pas le pseudo par défaut
-		if (strcmp(pseudo, "FinClient") != 0){
+		if (strcmp(pseudo, "FinClient") != 0)
+		{
 			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
 			strcat(pseudo, " a rejoint la communication\n");
 			sending(dSC, pseudo);
