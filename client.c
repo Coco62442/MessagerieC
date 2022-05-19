@@ -69,11 +69,6 @@ void *sendFileForThread(void *filename)
         perror("[FICHIER] Problème de connexion au serveur\n");
         exit(-1);
     }
-    // Msg de confirmation received from the server
-    char *response = (char *)malloc(sizeof(char) * 100);
-    receiving(response, sizeof(char) * 100);
-    printf("%s", response);
-    free(response);
     printf("[FICHIER] Socket connectée\n");
 
     // DEBUT ENVOI FICHIER
@@ -97,11 +92,21 @@ void *sendFileForThread(void *filename)
         perror("Erreur au send");
         exit(-1);
     }
+    // Msg de confirmation received from the server
+    char *response = (char *)malloc(sizeof(char) * 100);
+    receiving(response, sizeof(char) * 100);
+    printf("%s", response);
+    free(response);
     if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
     {
         perror("Erreur au send");
         exit(-1);
     }
+    // Msg de confirmation received from the server
+    char *response = (char *)malloc(sizeof(char) * 100);
+    receiving(response, sizeof(char) * 100);
+    printf("%s", response);
+    free(response);
 
     // Lecture et stockage pour envoi du fichier
     char *chaine = malloc(100);
@@ -122,16 +127,6 @@ void *sendFileForThread(void *filename)
 }
 
 /*
- * Envoie le fichier donné en paramètre au serveur
- * Paramètres : FILE *fp : le fichier à envoyer
- *              int dS : la socket du serveur
- */
-void send_file(char *filename)
-{
-    pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
-}
-
-/*
  * Vérifie si le client souhaite utiliser une des commandes
  * Paramètres : char *msg : message du client à vérifier
  * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
@@ -140,7 +135,7 @@ int useOfCommand(char *msg)
 {
     if (strcmp(msg, "/déposer\n") == 0)
     {
-        send_file("test.txt");
+        pthread_create(&thread_files, NULL, sendFileForThread, (void *)"test.txt");
         return 1;
     }
     return 0;
