@@ -13,7 +13,8 @@ int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
 pthread_t thread_files;
-struct sockaddr_in aS;
+char *addrServeur;
+char *portServeur;
 
 /*
  * Vérifie si un client souhaite quitter la communication
@@ -32,8 +33,7 @@ int endOfCommunication(char *msg)
 
 /*
  * Envoie un message à une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à envoyer
+ * Paramètres : char * msg : message à envoyer
  */
 void sending(char *msg)
 {
@@ -46,56 +46,76 @@ void sending(char *msg)
 
 void *sendFileForThread(void *filename)
 {
+    // Création de la socket
+    int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+    if (dS_file == -1)
+    {
+        perror("[FICHIER] Problème de création de socket client\n");
+        exit(-1);
+    }
+    printf("[FICHIER] Socket Créé\n");
+
+    // Nommage de la socket
+    struct sockaddr_in aS_fileTransfer;
+    aS_fileTransfer.sin_family = AF_INET;
+    inet_pton(AF_INET, addrServeur, &(aS_fileTransfer.sin_addr));
+    aS_fileTransfer.sin_port = htons(atoi(portServeur) + 1);
+    socklen_t lgA = sizeof(struct sockaddr_in);
+
+    // Envoi d'une demande de connexion
+    printf("[FICHIER] Connection en cours...\n");
+    if (connect(dS_file, (struct sockaddr *)&aS_fileTransfer, lgA) < 0)
+    {
+        perror("[FICHIER] Problème de connexion au serveur\n");
+        exit(-1);
+    }
+    // TODO: msg de confirmation received from the server
+    // receiving();
+    printf("[FICHIER] Socket connectée\n");
+
+    // DEBUT ENVOI FICHIER
     char *path = malloc(100);
     strcat(path, "./fichiers_client/");
     strcat(path, filename);
     FILE *stream = fopen(path, "r");
     if (stream == NULL)
     {
-        fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
+        fprintf(stderr, "[FICHIER] Cannot open file for reading\n");
         exit(-1);
     }
     fseek(stream, 0, SEEK_END);
     int length = ftell(stream);
+    printf("[FICHIER] Taille du fichier : %d\n", length);
     fseek(stream, 0, SEEK_SET);
 
     // Envoi de la taille du fichier, puis de son nom
-    char l = length + '0';
-    sending(&l);
-    sending(filename);
-
-    // Création de la socket
-    int dS_file = socket(PF_INET, SOCK_STREAM, 0);
-    if (dS_file == -1)
+    if (send(dS_file, &length, sizeof(int), 0) == -1)
     {
-        perror("[ENVOI FICHIER] Problème de création de socket client\n");
+        perror("Erreur au send");
         exit(-1);
     }
-    printf("[ENVOI FICHIER] Socket Créé\n");
-
-    // Nommage de la socket
-    socklen_t lgA = sizeof(struct sockaddr_in);
-
-    // Envoi d'une demande de connexion
-    printf("[ENVOI FICHIER] Connection en cours...\n");
-    if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
+    if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
     {
-        perror("[ENVOI FICHIER] Problème de connexion au serveur\n");
+        perror("Erreur au send");
         exit(-1);
     }
-    printf("[ENVOI FICHIER] Socket connectée\n");
 
     // Lecture et stockage pour envoi du fichier
     char *chaine = malloc(100);
-    char *toutFichier = malloc(length + 1);
+    char *toutFichier = malloc(length);
     while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
     {
         strcat(toutFichier, chaine);
     }
-    sending(toutFichier);
+    if (send(dS_file, toutFichier, length + 1, 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
     free(chaine);
     free(toutFichier);
     fclose(stream);
+    shutdown(dS_file, 2);
 }
 
 /*
@@ -221,7 +241,12 @@ int main(int argc, char *argv[])
     }
     printf("Socket Créé\n");
 
+    // On stocke l'adresse et le port pour le transfer de fichiers
+    addrServeur = argv[1];
+    portServeur = argv[2];
+
     // Nommage de la socket
+    struct sockaddr_in aS;
     aS.sin_family = AF_INET;
     inet_pton(AF_INET, argv[1], &(aS.sin_addr));
     aS.sin_port = htons(atoi(argv[2]));
