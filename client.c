@@ -105,6 +105,7 @@ void *sendFileForThread(void *filename)
         perror("Erreur au send");
         exit(-1);
     }
+    free(path);
     free(chaine);
     free(toutFichier);
     fclose(stream);
