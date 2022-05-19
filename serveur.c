@@ -25,8 +25,6 @@ struct Client
 	char *pseudo;
 	long dSCFC;
 	long dSCFE;
-	char *nomFichier;
-	int tailleFichier;
 };
 
 typedef struct Fichier Fichier;
@@ -34,8 +32,7 @@ struct Fichier
 {
 	int emplacementDisponible;
 	char *nomFichier;
-	long tailleFichier;
-	char *pseudo;
+	int tailleFichier;
 };
 
 /*
@@ -261,22 +258,21 @@ void *copieFichierThread(void *clientIndex)
 	tabClient[i].dSCFC = dSCFC;
 
 	// Réception des informations du fichier
-	printf("%s\n", tabClient[i].pseudo);
-	printf("%ld\n", tabClient[i].dSC);
-	receiving(tabClient[i].dSCFC, tabClient[i].tailleFichier + "0", sizeof(int));
-	printf("test2\n");
-	receiving(tabClient[i].dSCFC, tabClient[i].nomFichier, sizeof(char) * 100);
-	printf("test3\n");
-
+	char *tailleFichier = (char *)malloc(sizeof(int));
+	char *nomFichier = (char *)malloc(sizeof(char) * 100);
+	receiving(tabClient[i].dSCFC, tailleFichier, sizeof(int));
+	receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 100);
+	printf("%s\n", nomFichier);
+	printf("%s\n", tailleFichier);
 	// Début réception du fichier
 
-	char *buffer = (char *)malloc(tabClient[i].tailleFichier);
+	char *buffer = (char *)malloc(sizeof(char) * (tailleFichier - "0"));
 	int returnCode;
 	int index;
 
 	char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
 	strcat(emplacementFichier, "FichierServeur/");
-	strcat(emplacementFichier, tabClient[i].nomFichier);
+	strcat(emplacementFichier, nomFichier);
 	FILE *stream = fopen(emplacementFichier, "w");
 	if (stream == NULL)
 	{
@@ -284,10 +280,10 @@ void *copieFichierThread(void *clientIndex)
 		exit(-1);
 	}
 
-	receiving(tabClient[i].dSCFC, buffer, tabClient[i].tailleFichier);
+	receiving(tabClient[i].dSCFC, buffer, tailleFichier - "0");
 	printf("%s\n", buffer);
 
-	if (1 != fwrite(buffer, tabClient[i].tailleFichier, 1, stream))
+	if (1 != fwrite(buffer, tailleFichier - "0", 1, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
 	}
@@ -303,8 +299,8 @@ void *copieFichierThread(void *clientIndex)
 	free(emplacementFichier);
 	int j = giveNumFichier();
 	tabFichier[j].emplacementDisponible = 1;
-	tabFichier[j].nomFichier = tabClient[i].nomFichier;
-	tabFichier[j].tailleFichier = tabClient[i].tailleFichier;
+	tabFichier[j].nomFichier = nomFichier;
+	tabFichier[j].tailleFichier = tailleFichier - "0";
 	nbFichier++;
 
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
@@ -338,7 +334,7 @@ void *envoieFichierThread(void *numFichier)
 	}
 
 	printf("%s\n", buffer);
-	sendingDM(tabFichier[i].pseudo, buffer);
+	// sendingDM(tabFichier[i].pseudo, buffer);
 }
 
 /*
@@ -482,7 +478,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		pthread_t copieFichier;
 
-		if (pthread_create(&copieFichier, NULL, copieFichierThread, &i) == -1)
+		if (pthread_create(&copieFichier, NULL, copieFichierThread, (void *)i) == -1)
 		{
 			perror("Erreur thread create");
 		}
