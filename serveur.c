@@ -34,8 +34,9 @@ typedef struct Salon Salon;
 struct Salon
 {
     int idSalon;
+    int isOccupiedSalon;
     long dSCS;
-    char * nom;
+    char * nom; // max 40 ?
     char * description;
     int nbPlace;
 };
@@ -323,6 +324,28 @@ int useOfCommand(char *msg, char *pseudoSender)
             i++;
         }
         return 1;
+    }else if (strcmp(strToken, "/salon\n") == 0)
+    {
+        int i = 0;
+        long dSCS;
+        char *chaine = malloc(MAX_SALON*50); // nom salon max 40
+        while (i < MAX_SALON)
+        {
+            if (tabSalon[i].isOccupied == 1)
+            {
+                strcat(chaine, tabSalon[i].idSalon);
+                strcat(chaine, ") nom : ");
+                strcat(chaine, tabSalon[i].nom);
+                strcat(chaine, " desc : ");
+                strcat(chaine, tabSalon[i].description);
+                strcat(chaine, "\n");
+            }
+            i++;
+        }
+        sendingDM(pseudoSender, chaine);
+        free(chaine);
+        return 1;
+        // EN COURS
     }
     return 0;
 }
