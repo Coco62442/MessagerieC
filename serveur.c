@@ -1,9 +1,3 @@
-/*
-La commande /aide n'est pas totalement implémentée.
-Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'exécution de la commande
-Veuillez trouver le diagramme de Séquence sur ce lien :
-//www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
-*/
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -30,7 +24,7 @@ struct Client
 typedef struct Fichier Fichier;
 struct Fichier
 {
-	int emplacementDisponible;
+	int emplacementNonDisponible;
 	char *nomFichier;
 	int tailleFichier;
 };
@@ -40,7 +34,8 @@ struct Fichier
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
- */
+*/
+
 #define MAX_CLIENT 3
 #define MAX_FICHIER 4
 Client tabClient[MAX_CLIENT];
@@ -81,7 +76,7 @@ int giveNumFichier()
 	int i = 0;
 	while (i < MAX_FICHIER)
 	{
-		if (!tabFichier[i].emplacementDisponible)
+		if (!tabFichier[i].emplacementNonDisponible)
 		{
 			return i;
 		}
@@ -203,7 +198,7 @@ void receiving(int dS, char *rep, ssize_t size)
  */
 int endOfCommunication(char *msg)
 {
-	if (strcmp(msg, "** a quitté la communication **\n") == 0)
+	if (strcmp(msg, "/fin\n") == 0)
 	{
 		return 1;
 	}
@@ -227,7 +222,7 @@ void *copieFichierThread(void *clientIndex)
 	struct sockaddr_in ad;
 	ad.sin_family = AF_INET;
 	ad.sin_addr.s_addr = INADDR_ANY;
-	ad.sin_port = htons(4000);
+	ad.sin_port = htons(3001);
 	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
 	{
 		perror("[Fichier] Erreur lors du nommage de la socket");
@@ -244,29 +239,31 @@ void *copieFichierThread(void *clientIndex)
 	printf("[Fichier] Mode écoute\n");
 
 	int dSCFC;
-
+	printf("%d\n", i);
 	// Acceptons une connexion
 	struct sockaddr_in aC;
 	socklen_t lg = sizeof(struct sockaddr_in);
-	dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
-	if (dSCFC < 0)
+	tabClient[i].dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
+	if (tabClient[i].dSCFC < 0)
 	{
 		perror("Problème lors de l'acceptation du client\n");
 		exit(-1);
 	}
 
-	tabClient[i].dSCFC = dSCFC;
-
 	// Réception des informations du fichier
-	char *tailleFichier = (char *)malloc(sizeof(int));
+	int tailleFichier;
 	char *nomFichier = (char *)malloc(sizeof(char) * 100);
-	receiving(tabClient[i].dSCFC, tailleFichier, sizeof(int));
+	if (recv(tabClient[i].dSCFC, &tailleFichier, sizeof(int), 0) == -1)
+	{
+		perror("Erreur au recv");
+		exit(-1);
+	}
 	receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 100);
 	printf("%s\n", nomFichier);
-	printf("%s\n", tailleFichier);
-	// Début réception du fichier
+	printf("%d\n", tailleFichier);
 
-	char *buffer = (char *)malloc(sizeof(char) * (tailleFichier - "0"));
+	// Début réception du fichier
+	char *buffer = (char *)malloc(sizeof(char) * tailleFichier);
 	int returnCode;
 	int index;
 
@@ -280,10 +277,12 @@ void *copieFichierThread(void *clientIndex)
 		exit(-1);
 	}
 
-	receiving(tabClient[i].dSCFC, buffer, tailleFichier - "0");
+	receiving(tabClient[i].dSCFC, buffer, tailleFichier);
 	printf("%s\n", buffer);
 
-	if (1 != fwrite(buffer, tailleFichier - "0", 1, stream))
+	strcat(buffer, "\n");
+
+	if (1 != fwrite(buffer, tailleFichier + 1, 1, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
 	}
@@ -294,21 +293,23 @@ void *copieFichierThread(void *clientIndex)
 		fprintf(stderr, "Cannot close file\n");
 		exit(-1);
 	}
-
+	printf("kikoo\n");
 	free(buffer);
+	free(nomFichier);
 	free(emplacementFichier);
 	int j = giveNumFichier();
-	tabFichier[j].emplacementDisponible = 1;
+	tabFichier[j].emplacementNonDisponible = 1;
 	tabFichier[j].nomFichier = nomFichier;
-	tabFichier[j].tailleFichier = tailleFichier - "0";
+	tabFichier[j].tailleFichier = tailleFichier;
 	nbFichier++;
 
-	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé");
+	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
+	shutdown(tabClient[i].dSCFC, 2);
 }
 
 void *envoieFichierThread(void *numFichier)
 {
-	long i = (long)numFichier;
+	int i = (int)numFichier;
 
 	int returnCode;
 	int count;
@@ -473,8 +474,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Pseudo pas trouvé");
 			exit(-1);
 		}
-
-		
 
 		pthread_t copieFichier;
 

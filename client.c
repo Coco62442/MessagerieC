@@ -25,7 +25,6 @@ int endOfCommunication(char *msg)
 {
 	if (strcmp(msg, "/fin\n") == 0)
 	{
-		strcpy(msg, "** a quitté la communication **\n");
 		return 1;
 	}
 	return 0;
@@ -57,20 +56,22 @@ void *sendFileForThread(void *filename)
 	printf("[ENVOI FICHIER] Socket Créé\n");
 
 	// Nommage de la socket
-	aS.sin_family = AF_INET;
-	inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
-	aS.sin_port = htons(4000);
-	socklen_t lgA = sizeof(struct sockaddr_in);
+    struct sockaddr_in aS_fileTransfer;
+    aS_fileTransfer.sin_family = AF_INET;
+    inet_pton(AF_INET, addrServeur, &(aS_fileTransfer.sin_addr));
+    aS_fileTransfer.sin_port = htons(atoi("3000") + 1);
+    socklen_t lgA = sizeof(struct sockaddr_in);
 
 	// Envoi d'une demande de connexion
-	printf("[ENVOI FICHIER] Connection en cours...\n");
-	if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
-	{
-		perror("[ENVOI FICHIER] Problème de connexion au serveur\n");
-		exit(-1);
-	}
+    printf("[FICHIER] Connection en cours...\n");
+    if (connect(dS_file, (struct sockaddr *)&aS_fileTransfer, lgA) < 0)
+    {
+        perror("[FICHIER] Problème de connexion au serveur\n");
+        exit(-1);
+    }
 	printf("[ENVOI FICHIER] Socket connectée\n");
 
+	// DEBUT ENVOI FICHIER
 	char *path = malloc(100);
 	strcat(path, "./FichierClient/");
 	strcat(path, filename);
@@ -82,29 +83,29 @@ void *sendFileForThread(void *filename)
 	}
 	fseek(stream, 0, SEEK_END);
 	int length = ftell(stream);
+	printf("[FICHIER] Taille du fichier : %d\n", length);
 	fseek(stream, 0, SEEK_SET);
 
-	// Envoi de la taille du fichier, puis de son nom
-	char l = length + '0';
-	if (send(dS_file, &l, strlen(&l) + 1, 0) == -1)
-	{
-		perror("Erreur au send");
-		exit(-1);
-	}
-	if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
-	{
-		perror("Erreur au send");
-		exit(-1);
-	}
+	 // Envoi de la taille du fichier, puis de son nom
+    if (send(dS_file, &length, sizeof(int), 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
+    if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
 
 	// Lecture et stockage pour envoi du fichier
 	char *chaine = malloc(100);
-	char *toutFichier = malloc(length + 1);
+	char *toutFichier = malloc(length);
 	while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
 	{
 		strcat(toutFichier, chaine);
 	}
-	if (send(dS_file, toutFichier, strlen(toutFichier) + 1, 0) == -1)
+	if (send(dS_file, toutFichier, length + 1, 0) == -1)
 	{
 		perror("Erreur au send");
 		exit(-1);
@@ -112,6 +113,7 @@ void *sendFileForThread(void *filename)
 	free(chaine);
 	free(toutFichier);
 	fclose(stream);
+	shutdown(dS_file, 2);
 }
 
 /*

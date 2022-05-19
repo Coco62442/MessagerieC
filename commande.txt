@@ -16,4 +16,3 @@
   - mode hors ligne
   - liste utilisateurs connectés
   - recherche utilisateur connecté
-  
