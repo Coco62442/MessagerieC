@@ -18,7 +18,7 @@ char *portServeur;
 
 /*
  * Vérifie si un client souhaite quitter la communication
- * Paramètres : char ** msg : message du client à vérifier
+ * Paramètres : char * msg : message du client à vérifier
  * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
  */
 int endOfCommunication(char *msg)
@@ -69,8 +69,11 @@ void *sendFileForThread(void *filename)
         perror("[FICHIER] Problème de connexion au serveur\n");
         exit(-1);
     }
-    // TODO: msg de confirmation received from the server
-    // receiving();
+    // Msg de confirmation received from the server
+    char *response = (char *)malloc(sizeof(char) * 100);
+    receiving(response, sizeof(char) * 100);
+    printf("%s", response);
+    free(response);
     printf("[FICHIER] Socket connectée\n");
 
     // DEBUT ENVOI FICHIER
