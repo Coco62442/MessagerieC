@@ -116,6 +116,108 @@ void *sendFileForThread(void *filename)
 	shutdown(dS_file, 2);
 }
 
+void *recvFileForThread(void *filename)
+{
+	// Création de la socket
+	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+	if (dS_file == -1)
+	{
+		perror("[ENVOI FICHIER] Problème de création de socket client\n");
+		exit(-1);
+	}
+	printf("[ENVOI FICHIER] Socket Créé\n");
+
+	// Nommage de la socket
+    struct sockaddr_in aS_fileTransfer;
+    aS_fileTransfer.sin_family = AF_INET;
+    inet_pton(AF_INET, addrServeur, &(aS_fileTransfer.sin_addr));
+    aS_fileTransfer.sin_port = htons(atoi("3000") + 1);
+    socklen_t lgA = sizeof(struct sockaddr_in);
+
+	// Envoi d'une demande de connexion
+    printf("[FICHIER] Connection en cours...\n");
+    if (connect(dS_file, (struct sockaddr *)&aS_fileTransfer, lgA) < 0)
+    {
+        perror("[FICHIER] Problème de connexion au serveur\n");
+        exit(-1);
+    }
+	printf("[ENVOI FICHIER] Socket connectée\n");
+
+	char *listeFichiers = (char *)malloc(sizeof(char) * 100);
+	if (recv(dS_file, listeFichiers, sizeof(char) * 100, 0) == -1)
+	{
+		perror("Erreur au recv");
+		exit(-1);
+	}
+	printf("%s", listeFichiers);
+	char *rep = malloc(sizeof(int));
+	fgets(rep, 2, stdin);
+	if (send(dS_file, rep, strlen(rep) + 1, 0) == -1)
+	{
+		perror("Erreur au send");
+		exit(-1);
+	}
+
+	// Réception des informations du fichier
+	int tailleFichier;
+	char *nomFichier = (char *)malloc(sizeof(char) * 100);
+	if (recv(dS_file, &tailleFichier, sizeof(int), 0) == -1)
+	{
+		perror("Erreur au recv");
+		exit(-1);
+	}
+	if (recv(dS_file, nomFichier, sizeof(char) * 100, 0) == -1)
+	{
+		perror("Erreur au recv");
+		exit(-1);
+	}
+	printf("%s\n", nomFichier);
+	printf("%d\n", tailleFichier);
+
+	// Début réception du fichier
+	char *buffer = (char *)malloc(sizeof(char) * tailleFichier);
+	int returnCode;
+	int index;
+
+	char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
+	strcat(emplacementFichier, "FichierClient/");
+	strcat(emplacementFichier, nomFichier);
+	FILE *stream = fopen(emplacementFichier, "w");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "Cannot open file for writing\n");
+		exit(-1);
+	}
+
+	if (recv(dS_file, buffer, sizeof(int), 0) == -1)
+	{
+		perror("Erreur au recv");
+		exit(-1);
+	}
+	printf("%s\n", buffer);
+
+	strcat(buffer, "\n");
+
+	if (1 != fwrite(buffer, tailleFichier + 1, 1, stream))
+	{
+		fprintf(stderr, "Cannot write block in file\n");
+	}
+
+	returnCode = fclose(stream);
+	if (returnCode == EOF)
+	{
+		fprintf(stderr, "Cannot close file\n");
+		exit(-1);
+	}
+	printf("kikoo\n");
+	free(buffer);
+	free(nomFichier);
+	free(emplacementFichier);
+
+	printf("Téléchargement du fichier terminé\n");
+	shutdown(dS_file, 2);
+}
+
 /*
  * Envoie le fichier donné en paramètre au serveur
  * Paramètres : FILE *fp : le fichier à envoyer
@@ -139,6 +241,20 @@ int useOfCommand(char *msg)
 		send_file("test.txt");
 		return 1;
 	}
+	else if (strcmp(msg, "/télécharger\n") == 0)
+	{
+		
+		sending("/télécharger\n");
+		pthread_t threadRecvFile;
+
+		if (pthread_create(&threadRecvFile, NULL, recvFileForThread, NULL) < 0 )
+		{
+			perror("Erreur\n");
+			exit(-1);
+		}
+		return 1;
+	}
+	
 	return 0;
 }
 
