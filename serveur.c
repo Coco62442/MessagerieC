@@ -1,7 +1,3 @@
-/*
-Veuillez trouver le diagramme de Séquence sur ce lien :
-//www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
-*/
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -195,20 +191,6 @@ void receiving(int dS, char *rep, ssize_t size)
         perror("Erreur au recv");
         exit(-1);
     }
-}
-
-/*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char * msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
- */
-int endOfCommunication(char *msg)
-{
-    if (strcmp(msg, "** a quitté la communication **\n") == 0)
-    {
-        return 1;
-    }
-    return 0;
 }
 
 void *copieFichierThread(void *clientIndex)
@@ -575,7 +557,7 @@ void *communication(void *clientParam)
         printf("\nMessage recu: %s \n", msgReceived);
 
         // On verifie si le client veut terminer la communication
-        isEnd = endOfCommunication(msgReceived);
+        isEnd = strcmp(msgReceived, "/fin\n") == 0;
 
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));

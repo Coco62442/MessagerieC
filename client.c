@@ -17,21 +17,6 @@ char *addrServeur;
 char *portServeur;
 
 /*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char * msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
- */
-int endOfCommunication(char *msg)
-{
-    if (strcmp(msg, "/fin\n") == 0)
-    {
-        strcpy(msg, "** a quitté la communication **\n");
-        return 1;
-    }
-    return 0;
-}
-
-/*
  * Envoie un message à une socket et teste que tout se passe bien
  * Paramètres : char * msg : message à envoyer
  */
@@ -153,7 +138,7 @@ void *sendingForThread()
         fgets(m, 100, stdin);
 
         // On vérifie si le client veut quitter la communication
-        isEnd = endOfCommunication(m);
+        isEnd = strcmp(m, "/fin\n") == 0;
 
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(m));
