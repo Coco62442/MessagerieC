@@ -7,12 +7,17 @@
 |'/mp nomUtilisateur message'
 |
 |Envoyer un message à tout les utilisateurs connectés :
-|'message'
+|'message' // où message est le contenu que l'on souhaite envoyer
 |
 |Se déconnecter :
 |'/fin'
 |
-|Non implémenté :
-|- mode hors ligne
-|- liste utilisateurs connectés
-|- recherche utilisateur connecté
+|Envoyer un fichier au serveur :
+|'/file'
+|
+|Récupérer la liste des utilisateurs connectés :
+|'/enLigne'
+|
+|Vérifier si un utilisateur est connecté :
+|'/isConnecte pseudoUtilisateur' // où pseudoUtilisateur est l'utilisateur recherché
+|

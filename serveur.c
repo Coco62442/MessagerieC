@@ -1,6 +1,7 @@
 /*
-La commande /aide n'est pas totalement implémentée.
-Elle fait crash le serveur lorsque le client souhaite envoyer un message après l'exécution de la commande
+Gestion du ctrl +c (include + main + fonction sigintHandler)
+Structure salon + variables + sem/mutex
+
 Veuillez trouver le diagramme de Séquence sur ce lien :
 //www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
 */
@@ -27,15 +28,34 @@ struct Client
 };
 
 /*
+ * Définition d'une structure Salon pour regrouper toutes les informations d'un salon
+ */
+typedef struct Salon Salon;
+struct Salon
+{
+    int idSalon;
+    long dSCS;
+    char * nom;
+    char * description;
+    int nbPlace;
+};
+
+/*
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
+
+ * - MAX_SALON = nombre maximum de salon créé sur le serveur
+ * - tabSalon = tableau répertoriant les salons créés
  */
 #define MAX_CLIENT 3
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
+
+#define MAX_SALON 5
+Salon tabSalon[MAX_SALON];
 
 #define TAILLE_MAX 1000
 int dS = 0;
@@ -46,6 +66,11 @@ sem_t semaphore;
 sem_t semaphoreThread;
 // Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
+
+// Création du sémaphore pour gérer le nombre de salon
+sem_t semaphoreSalon;
+// Création du mutex pour la modification de tabSalon[]
+pthread_mutex_t mutexSalon;
 
 /*
  * Fonctions pour gérer les indices du tableaux de clients
