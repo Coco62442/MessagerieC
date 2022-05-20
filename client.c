@@ -1,3 +1,7 @@
+/*
+Gestion du ctrl +c (include + main + fonction sigintHandler)
+*/
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
