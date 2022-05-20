@@ -326,7 +326,7 @@ int useOfCommand(char *msg, char *pseudoSender)
     {
         int i = 0;
         long dSCS;
-        char *chaine = malloc(MAX_SALON*50); // nom salon max 40
+        char *chaine = malloc(MAX_SALON*60); // nom salon max 40
         while (i < MAX_SALON)
         {
             if (tabSalon[i].isOccupied == 1)
