@@ -342,8 +342,37 @@ int useOfCommand(char *msg, char *pseudoSender)
         }
         sendingDM(pseudoSender, chaine);
         free(chaine);
+		
+		char *numSalon = malloc(sizeof(char)); // num salon
+		if(strcmp(receiving(pseudoSender, numSalon, sizeof(char)))){
+			i = 0;
+			while (i < MAX_SALON)
+			{
+				if (tabSalon[i].isOccupied == 1 && strcmp(tabSalon[i].idSalon,numSalon))
+				{
+					// 
+					int dSCS;
+					// Vérifions si on peut accepter un client
+					// On attends la disponibilité du sémaphore
+					sem_wait(&semaphoreSalon);
+
+					// Acceptons une connexion
+					struct sockaddr_in aC;
+					socklen_t lg = sizeof(struct sockaddr_in);
+					dSCS = accept(dS, (struct sockaddr *)&aC, &lg);
+					if (dSCS < 0)
+					{
+						perror("Problème lors de l'acceptation du client\n");
+						exit(-1);
+					}
+					printf("Client %ld connecté au salon %s\n", pseudoSender, numSalon);
+
+					// EN COURS PAS SÛRE
+				}
+				i++;
+			}
+		}
         return 1;
-        // EN COURS
     }
     return 0;
 }
