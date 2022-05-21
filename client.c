@@ -77,21 +77,11 @@ void *sendFileForThread(void *filename)
         perror("Erreur au send");
         exit(-1);
     }
-    // // Msg de confirmation received from the server
-    // char *response = (char *)malloc(sizeof(char) * 100);
-    // receiving(response, sizeof(char) * 100);
-    // printf("%s", response);
-    // free(response);
     if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
     {
         perror("Erreur au send");
         exit(-1);
     }
-    // // Msg de confirmation received from the server
-    // char *response = (char *)malloc(sizeof(char) * 100);
-    // receiving(response, sizeof(char) * 100);
-    // printf("%s", response);
-    // free(response);
 
     // Lecture et stockage pour envoi du fichier
     char *chaine = malloc(100);
@@ -105,6 +95,7 @@ void *sendFileForThread(void *filename)
         perror("Erreur au send");
         exit(-1);
     }
+    printf("Fichier bien envoyé !"); //TODO: maybe mettre une vérif ici, que le serveur ait bien récup
     free(path);
     free(chaine);
     free(toutFichier);

@@ -19,17 +19,14 @@ struct Client
     char *pseudo;
     long dSCFC;
     long dSCFE;
-    char *nomFichier;
-    int tailleFichier;
 };
 
 typedef struct Fichier Fichier;
 struct Fichier
 {
-    int emplacementDisponible;
+    int emplacementNonDisponible;
     char *nomFichier;
-    long tailleFichier;
-    char *pseudo;
+    int tailleFichier;
 };
 
 /*
@@ -38,6 +35,7 @@ struct Fichier
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
  */
+
 #define MAX_CLIENT 3
 #define MAX_FICHIER 4
 Client tabClient[MAX_CLIENT];
@@ -45,6 +43,7 @@ pthread_t tabThread[MAX_CLIENT];
 Fichier tabFichier[MAX_FICHIER];
 long nbClient = 0;
 int dS;
+int dS_file;
 int nbFichier = 0;
 
 // Création du sémaphore pour gérer le nombre de client
@@ -78,7 +77,7 @@ int giveNumFichier()
     int i = 0;
     while (i < MAX_FICHIER)
     {
-        if (!tabFichier[i].emplacementDisponible)
+        if (!tabFichier[i].emplacementNonDisponible)
         {
             return i;
         }
@@ -193,70 +192,55 @@ void receiving(int dS, char *rep, ssize_t size)
     }
 }
 
+/*
+ * Vérifie si un client souhaite quitter la communication
+ * Paramètres : char * msg : message du client à vérifier
+ * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+ */
+int endOfCommunication(char *msg)
+{
+    if (strcmp(msg, "/fin\n") == 0)
+    {
+        return 1;
+    }
+    return 0;
+}
+
 void *copieFichierThread(void *clientIndex)
 {
     int i = (long)clientIndex;
 
-    // Création de la socket
-    int dS = socket(PF_INET, SOCK_STREAM, 0);
-    if (dS < 0)
-    {
-        perror("[Fichier] Problème de création de socket serveur");
-        exit(-1);
-    }
-    printf("Socket [Fichier] Créée\n");
-
-    // Nommage de la socket
-    struct sockaddr_in ad;
-    ad.sin_family = AF_INET;
-    ad.sin_addr.s_addr = INADDR_ANY;
-    ad.sin_port = htons(4000);
-    if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
-    {
-        perror("[Fichier] Erreur lors du nommage de la socket");
-        exit(-1);
-    }
-    printf("[Fichier] Socket nommée\n");
-
-    // Passage de la socket en mode écoute
-    if (listen(dS, 7) < 0)
-    {
-        perror("[Fichier] Problème au niveau du listen");
-        exit(-1);
-    }
-    printf("[Fichier] Mode écoute\n");
-
-    int dSCFC;
-
+    printf("%d\n", i);
     // Acceptons une connexion
     struct sockaddr_in aC;
     socklen_t lg = sizeof(struct sockaddr_in);
-    dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
-    if (dSCFC < 0)
+    tabClient[i].dSCFC = accept(dS_file, (struct sockaddr *)&aC, &lg);
+    if (tabClient[i].dSCFC < 0)
     {
-        perror("[Fichier] Problème lors de l'acceptation du client\n");
+        perror("Problème lors de l'acceptation du client\n");
         exit(-1);
     }
 
-    tabClient[i].dSCFC = dSCFC;
-
     // Réception des informations du fichier
-    printf("[Fichier] %s\n", tabClient[i].pseudo);
-    printf("[Fichier] %ld\n", tabClient[i].dSC);
-    receiving(tabClient[i].dSCFC, tabClient[i].tailleFichier + "0", sizeof(int));
-    printf("[Fichier] test2\n");
-    receiving(tabClient[i].dSCFC, tabClient[i].nomFichier, sizeof(char) * 100);
-    printf("[Fichier] test3\n");
+    int tailleFichier;
+    char *nomFichier = (char *)malloc(sizeof(char) * 100);
+    if (recv(tabClient[i].dSCFC, &tailleFichier, sizeof(int), 0) == -1)
+    {
+        perror("Erreur au recv");
+        exit(-1);
+    }
+    receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 100);
+    printf("%s\n", nomFichier);
+    printf("%d\n", tailleFichier);
 
     // Début réception du fichier
-
-    char *buffer = (char *)malloc(tabClient[i].tailleFichier);
+    char *buffer = (char *)malloc(sizeof(char) * tailleFichier);
     int returnCode;
     int index;
 
-    char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
+    char *emplacementFichier = (char *)malloc(sizeof(char) * 50);
     strcat(emplacementFichier, "FichierServeur/");
-    strcat(emplacementFichier, tabClient[i].nomFichier);
+    strcat(emplacementFichier, nomFichier);
     FILE *stream = fopen(emplacementFichier, "w");
     if (stream == NULL)
     {
@@ -264,50 +248,14 @@ void *copieFichierThread(void *clientIndex)
         exit(-1);
     }
 
-    receiving(tabClient[i].dSCFC, buffer, tabClient[i].tailleFichier);
+    receiving(tabClient[i].dSCFC, buffer, tailleFichier);
     printf("%s\n", buffer);
 
-    if (1 != fwrite(buffer, tabClient[i].tailleFichier, 1, stream))
+    strcat(buffer, "\n");
+
+    if (1 != fwrite(buffer, tailleFichier + 1, 1, stream))
     {
-        fprintf(stderr, "[Fichier] Cannot write block in file\n");
-    }
-
-    returnCode = fclose(stream);
-    if (returnCode == EOF)
-    {
-        fprintf(stderr, "[Fichier] Cannot close file\n");
-        exit(-1);
-    }
-
-    free(buffer);
-    free(emplacementFichier);
-    int j = giveNumFichier();
-    tabFichier[j].emplacementDisponible = 1;
-    tabFichier[j].nomFichier = tabClient[i].nomFichier;
-    tabFichier[j].tailleFichier = tabClient[i].tailleFichier;
-    nbFichier++;
-
-    sendingDM(tabClient[i].pseudo, "[Fichier] Téléchargement du fichier terminé");
-}
-
-void *envoieFichierThread(void *numFichier)
-{
-    long i = (long)numFichier;
-
-    int returnCode;
-    int count;
-
-    FILE *stream = fopen(tabFichier[i].nomFichier, "r");
-    if (stream == NULL)
-    {
-        fprintf(stderr, "Cannot open file for reading\n");
-        exit(-1);
-    }
-
-    char *buffer = (char *)malloc(sizeof(char) * tabFichier[i].tailleFichier);
-    if (tabFichier[i].tailleFichier != fread(buffer, 1, tabFichier[i].tailleFichier, stream))
-    {
-        fprintf(stderr, "Cannot read blocks in file\n");
+        fprintf(stderr, "Cannot write block in file\n");
     }
 
     returnCode = fclose(stream);
@@ -316,9 +264,104 @@ void *envoieFichierThread(void *numFichier)
         fprintf(stderr, "Cannot close file\n");
         exit(-1);
     }
+    printf("kikoo\n");
+    free(buffer);
+    printf("1\n");
+    free(nomFichier);
+    printf("2\n");
+    free(emplacementFichier);
+    printf("3\n");
+    int j = giveNumFichier();
+    tabFichier[j].emplacementNonDisponible = 1;
+    tabFichier[j].nomFichier = nomFichier;
+    tabFichier[j].tailleFichier = tailleFichier;
+    nbFichier++;
 
-    printf("%s\n", buffer);
-    sendingDM(tabFichier[i].pseudo, buffer);
+    sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
+    shutdown(tabClient[i].dSCFC, 2);
+}
+
+void *envoieFichierThread(void *clientIndex)
+{
+    int i = (long)clientIndex;
+    printf("%d\n", i);
+
+    // Acceptons une connexion
+    struct sockaddr_in aC;
+    socklen_t lg = sizeof(struct sockaddr_in);
+    tabClient[i].dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
+    if (tabClient[i].dSCFC < 0)
+    {
+        perror("Problème lors de l'acceptation du client\n");
+        exit(-1);
+    }
+
+    char *rep = (char *)malloc(sizeof(char) * 100);
+    printf("%d\n", nbFichier);
+    for (int j = 0; j < nbFichier; j++)
+    {
+        strcat(rep, j + "0");
+        strcat(rep, "\t");
+        printf("%s\n", tabFichier[j].nomFichier);
+        strcat(rep, tabFichier[j].nomFichier);
+        strcat(rep, "\t");
+        strcat(rep, tabFichier[j].tailleFichier + "0");
+        strcat(rep, "\n");
+    }
+    printf("%s\n", rep);
+    sendingDM(tabClient[i].pseudo, rep);
+    free(rep);
+
+    int numFichier;
+    if (recv(tabClient[i].dSCFC, &numFichier, sizeof(int), 0) == -1)
+    {
+        perror("Erreur au recv");
+        exit(-1);
+    }
+
+    // DEBUT ENVOI FICHIER
+    char *path = malloc(100);
+    strcat(path, "./FichierServeur/");
+    strcat(path, tabFichier[i].nomFichier);
+    FILE *stream = fopen(path, "r");
+    if (stream == NULL)
+    {
+        fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
+        exit(-1);
+    }
+    fseek(stream, 0, SEEK_END);
+    int length = ftell(stream);
+    printf("[FICHIER] Taille du fichier : %d\n", length);
+    fseek(stream, 0, SEEK_SET);
+
+    // Envoi de la taille du fichier, puis de son nom
+    if (send(tabClient[i].dSCFC, &length, sizeof(int), 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
+    if (send(tabClient[i].dSCFC, tabFichier[i].nomFichier, strlen(tabFichier[i].nomFichier) + 1, 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
+
+    // Lecture et stockage pour envoi du fichier
+    char *chaine = malloc(100);
+    char *toutFichier = malloc(length);
+    while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+    {
+        strcat(toutFichier, chaine);
+    }
+    if (send(tabClient[i].dSCFC, toutFichier, length + 1, 0) == -1)
+    {
+        perror("Erreur au send");
+        exit(-1);
+    }
+    free(chaine);
+    free(toutFichier);
+    fclose(stream);
+    shutdown(tabClient[i].dSCFC, 2);
 }
 
 /*
@@ -412,27 +455,7 @@ int useOfCommand(char *msg, char *pseudoSender)
             {
                 strcat(toutFichier, chaine);
             }
-            // sendingDM(pseudoSender, toutFichier);
-            int i = 0;
-            while (i < MAX_CLIENT)
-            {
-                if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-                {
-                    break;
-                }
-                i++;
-            }
-            if (i == MAX_CLIENT)
-            {
-                perror("Pseudo pas trouvé");
-                exit(-1);
-            }
-            long dSC = tabClient[i].dSC;
-            if (send(dSC, toutFichier, length + 1, 0) == -1)
-            {
-                perror("Erreur à l'envoi du mp");
-                exit(-1);
-            }
+            sendingDM(pseudoSender, toutFichier);
             free(chaine);
             free(toutFichier);
         }
@@ -453,7 +476,7 @@ int useOfCommand(char *msg, char *pseudoSender)
             {
                 char *msgToSend = (char *)malloc(sizeof(char) * 30);
                 strcat(msgToSend, tabClient[i].pseudo);
-                strcat(msgToSend, " est connecté\n");
+                strcat(msgToSend, " est en ligne\n");
                 sendingDM(pseudoSender, msgToSend);
                 free(msgToSend);
             }
@@ -480,61 +503,27 @@ int useOfCommand(char *msg, char *pseudoSender)
 
         pthread_t copieFichier;
 
-        if (pthread_create(&copieFichier, NULL, copieFichierThread, &i) == -1)
+        if (pthread_create(&copieFichier, NULL, copieFichierThread, (void *)i) == -1)
         {
             perror("Erreur thread create");
         }
 
         return 1;
     }
-    else if (strcmp(strToken, "/telecharger\n") == 0)
+    else if (strcmp(strToken, "/télécharger\n") == 0)
     {
-        char *rep = (char *)malloc(sizeof(char) * 100);
-        for (int i = 0; i < nbFichier; i++)
-        {
-            strcat(rep, i + "0");
-            strcat(rep, "\t");
-            strcat(rep, tabFichier[i].nomFichier);
-            strcat(rep, "\t");
-            strcat(rep, tabFichier[i].tailleFichier + "0");
-            strcat(rep, "\n");
-        }
-        sendingDM(pseudoSender, rep);
-        free(rep);
-
-        long dSC = pseudoTodSC(pseudoSender);
-        if (dSC == -1)
-        {
-            perror("Pseudo introuvé\n");
-            exit(-1);
-        }
-
-        char *numFichier = (char *)malloc(sizeof(int));
-        receiving(dSC, numFichier, sizeof(int));
-
-        // Envoie du nom du fichier sélectionné
-        sendingDM(pseudoSender, tabFichier[numFichier - "0"].nomFichier);
-
-        // Récupération de la taille du fichier
-        struct stat sb;
-
-        if (stat(tabFichier[numFichier - "0"].nomFichier, &sb) == -1)
-        {
-            perror("stat");
-            exit(EXIT_FAILURE);
-        }
-
-        // Envoie de la taille du fichier
-        char *tailleFichier = malloc(sizeof(int));
-        tailleFichier = (char *)sb.st_size;
-        sendingDM(pseudoSender, tailleFichier);
-
         pthread_t envoieFichier;
+        int i = 0;
+        while (strcmp(tabClient[i].pseudo, pseudoSender) != 0)
+        {
+            i++;
+        }
 
-        if (pthread_create(&envoieFichier, NULL, envoieFichierThread, (void *)(numFichier - "0")) == -1)
+        if (pthread_create(&envoieFichier, NULL, envoieFichierThread, (void *)(long)i) == -1)
         {
             perror("Erreur thread create");
         }
+        return 1;
     }
 
     return 0;
@@ -557,7 +546,7 @@ void *communication(void *clientParam)
         printf("\nMessage recu: %s \n", msgReceived);
 
         // On verifie si le client veut terminer la communication
-        isEnd = strcmp(msgReceived, "/fin\n") == 0;
+        isEnd = endOfCommunication(msgReceived);
 
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
@@ -611,6 +600,34 @@ int main(int argc, char *argv[])
         exit(-1);
     }
     printf("Début programme\n");
+    // Création de la socket
+    dS_file = socket(PF_INET, SOCK_STREAM, 0);
+    if (dS_file < 0)
+    {
+        perror("[Fichier] Problème de création de socket serveur");
+        exit(-1);
+    }
+    printf("Socket [Fichier] Créé\n");
+
+    // Nommage de la socket
+    struct sockaddr_in ad_file;
+    ad_file.sin_family = AF_INET;
+    ad_file.sin_addr.s_addr = INADDR_ANY;
+    ad_file.sin_port = htons(3001);
+    if (bind(dS_file, (struct sockaddr *)&ad_file, sizeof(ad_file)) < 0)
+    {
+        perror("[Fichier] Erreur lors du nommage de la socket");
+        exit(-1);
+    }
+    printf("[Fichier] Socket nommée\n");
+
+    // Passage de la socket en mode écoute
+    if (listen(dS_file, 7) < 0)
+    {
+        perror("[Fichier] Problème au niveau du listen");
+        exit(-1);
+    }
+    printf("[Fichier] Mode écoute\n");
 
     // Création de la socket
     dS = socket(PF_INET, SOCK_STREAM, 0);
