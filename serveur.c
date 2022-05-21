@@ -366,7 +366,7 @@ void *envoieFichierThread(void *clientIndex)
 
 /*
  * Permet de JOIN les threads terminés
- * Paramètre : int numClient : indice du thred à join
+ * Paramètre : int numClient : indice du thread à join
  */
 void endOfThread(int numclient)
 {
@@ -389,7 +389,7 @@ int useOfCommand(char *msg, char *pseudoSender)
         pseudoReceiver = strtok(NULL, " ");
         if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
         {
-            sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
+            sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indications");
             printf("Commande \"/mp\" mal utilisée\n");
             return 0;
         }
@@ -412,7 +412,7 @@ int useOfCommand(char *msg, char *pseudoSender)
         free(msgToSend);
         return 1;
     }
-    else if (strcmp(strToken, "/isConnecte") == 0)
+    else if (strcmp(strToken, "/esConnecté") == 0)
     {
         // Récupération du pseudo
         char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
@@ -486,6 +486,7 @@ int useOfCommand(char *msg, char *pseudoSender)
     }
     else if (strcmp(strToken, "/déposer\n") == 0)
     {
+        printf("Commande '/déposer' entrée");
         long i = 0;
         while (i < MAX_CLIENT)
         {
@@ -546,7 +547,11 @@ void *communication(void *clientParam)
         printf("\nMessage recu: %s \n", msgReceived);
 
         // On verifie si le client veut terminer la communication
-        isEnd = endOfCommunication(msgReceived);
+        if (endOfCommunication(msgReceived))
+        {
+            isEnd = 1;
+            strcpy(msgReceived, "** a quitté la communication **\n");
+        }
 
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));

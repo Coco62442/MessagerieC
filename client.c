@@ -6,8 +6,10 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <dirent.h>
 
 #define SIZE 1024
+char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 
 int isEnd = 0;
 int dS = -1;
@@ -57,15 +59,60 @@ void *sendFileForThread(void *filename)
     printf("[FICHIER] Socket connectée\n");
 
     // DEBUT ENVOI FICHIER
-    char *path = malloc(100);
-    strcat(path, "./fichiers_client/");
-    strcat(path, filename);
-    FILE *stream = fopen(path, "r");
-    if (stream == NULL)
+    int fileSelected = 0;
+    char *path = malloc(300);
+    FILE *stream;
+    while (!fileSelected)
     {
-        fprintf(stderr, "[FICHIER] Cannot open file for reading\n");
-        exit(-1);
+        strcpy(path, DOSSIER_ENVOI_FICHIERS);
+        strcat(path, "/");
+        strcat(path, filename);
+
+        stream = fopen(path, "r");
+        if (stream == NULL)
+        {
+            printf("[FICHIER] Ce fichier n'existe pas : %s\n", (char *)filename);
+        }
+        else
+        {
+            fileSelected = 1;
+            continue;
+        }
+
+        // Affiche la liste des fichiers
+        DIR *folder;
+        struct dirent *entry;
+        int files = 0;
+        folder = opendir(DOSSIER_ENVOI_FICHIERS);
+        if (folder != NULL)
+        {
+            printf("[FICHIER] Voilà la liste de fichiers :\n");
+            while ((entry = readdir(folder)))
+            {
+                if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+                {
+                    files++;
+                    printf("%3d: %s\n", files, entry->d_name);
+                }
+            }
+            closedir(folder);
+        }
+        else
+        {
+            perror("Ne peux pas ouvrir le répertoire");
+            exit(-1);
+        }
+
+        // Demande le fichier a envoyer
+        printf("[FICHIER] Indiquer le nom du fichier en tapant '/déposer nomDuFichier': \n");
+        fgets(filename, 100, stdin);
     }
+
+    // if (stream == NULL)
+    // {
+    //     fprintf(stderr, "[FICHIER] Cannot open file for reading\n");
+    //     exit(-1);
+    // }
     fseek(stream, 0, SEEK_END);
     int length = ftell(stream);
     printf("[FICHIER] Taille du fichier : %d\n", length);
@@ -95,7 +142,7 @@ void *sendFileForThread(void *filename)
         perror("Erreur au send");
         exit(-1);
     }
-    printf("Fichier bien envoyé !"); //TODO: maybe mettre une vérif ici, que le serveur ait bien récup
+    printf("Fichier bien envoyé !\n"); // TODO: maybe mettre une vérif ici, que le serveur ait bien récup
     free(path);
     free(chaine);
     free(toutFichier);
@@ -110,11 +157,27 @@ void *sendFileForThread(void *filename)
  */
 int useOfCommand(char *msg)
 {
-    if (strcmp(msg, "/déposer\n") == 0)
+    char *strToken = strtok(msg, " ");
+    if (strcmp(strToken, "/déposer\n") == 0)
     {
-        pthread_create(&thread_files, NULL, sendFileForThread, (void *)"test.txt");
+        char *filename = (char *)malloc(sizeof(char) * 100);
+        filename = strtok(NULL, " ");
+        printf("Yo %s\n", filename);
+        if (filename != NULL)
+        {
+            printf("Je suis %s\n", filename);
+            pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
+        }
+        else
+        {
+            printf("Je suis NULL\n");
+            pthread_create(&thread_files, NULL, sendFileForThread, NULL);
+        }
+        free(filename);
+        free(strToken);
         return 1;
     }
+    free(strToken);
     return 0;
 }
 
@@ -192,7 +255,7 @@ void sigintHandler(int sig_num)
         sending(myPseudoEnd);
     }
     sleep(0.2);
-    sending("** a quitté la communication **\n");
+    sending("/fin\n");
     exit(1);
 }
 
