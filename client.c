@@ -31,8 +31,11 @@ void sending(char *msg)
     }
 }
 
-void *sendFileForThread(void *filename)
+void *sendFileForThread(void *fileName)
 {
+    char *filename = (char *)malloc(100);
+    strcpy(filename, (char *)fileName);
+    printf("sfft: %s\n", filename);
     // Création de la socket
     int dS_file = socket(PF_INET, SOCK_STREAM, 0);
     if (dS_file == -1)
@@ -61,17 +64,19 @@ void *sendFileForThread(void *filename)
     // DEBUT ENVOI FICHIER
     int fileSelected = 0;
     char *path = malloc(300);
-    FILE *stream;
+    FILE *stream = NULL;
     while (!fileSelected)
     {
+        printf("je rentre\n");
         strcpy(path, DOSSIER_ENVOI_FICHIERS);
         strcat(path, "/");
         strcat(path, filename);
+        printf("%s\n", path);
 
         stream = fopen(path, "r");
         if (stream == NULL)
         {
-            printf("[FICHIER] Ce fichier n'existe pas : %s\n", (char *)filename);
+            printf("[FICHIER] Ce fichier n'existe pas : %s\n", filename);
         }
         else
         {
@@ -158,22 +163,19 @@ void *sendFileForThread(void *filename)
 int useOfCommand(char *msg)
 {
     char *strToken = strtok(msg, " ");
-    if (strcmp(strToken, "/déposer\n") == 0)
+    if (strcmp(strToken, "/déposer") == 0)
     {
-        char *filename = (char *)malloc(sizeof(char) * 100);
+        char *filename = (char *)malloc(100);
         filename = strtok(NULL, " ");
-        printf("Yo %s\n", filename);
+        printf("uoc: %s\n", filename);
         if (filename != NULL)
         {
-            printf("Je suis %s\n", filename);
             pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
         }
         else
         {
-            printf("Je suis NULL\n");
             pthread_create(&thread_files, NULL, sendFileForThread, NULL);
         }
-        free(filename);
         free(strToken);
         return 1;
     }

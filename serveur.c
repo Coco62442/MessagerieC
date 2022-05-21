@@ -486,7 +486,7 @@ int useOfCommand(char *msg, char *pseudoSender)
     }
     else if (strcmp(strToken, "/déposer\n") == 0)
     {
-        printf("Commande '/déposer' entrée");
+        printf("Commande '/déposer' entrée\n");
         long i = 0;
         while (i < MAX_CLIENT)
         {
