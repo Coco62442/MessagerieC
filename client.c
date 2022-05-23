@@ -9,8 +9,17 @@
 #include <dirent.h>
 
 #define SIZE 1024
-char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 
+/**
+ * - DOSSIER_ENVOI_FICHIERS = chemin du fichier dans lequel sont stockés les fichiers de transfert
+ * - isEnd = booléen vérifiant si le client est connecté ou s'il a terminé la discussion avec le serveur
+ * - dS = socket du serveur
+ * - boolConnect = booléen vérifiant si le client est connecté afin de gérer les signaux (CTRL+C)
+ * - thread_files = thread gérant le transfert de fichiers
+ * - addrServeur = adresse du serveur sur laquelle est connecté le client
+ * - portServeur = port du serveur sur lequel est connecté le client
+ */
+char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
@@ -18,9 +27,10 @@ pthread_t thread_files;
 char *addrServeur;
 char *portServeur;
 
-/*
- * Envoie un message à une socket et teste que tout se passe bien
- * Paramètres : char * msg : message à envoyer
+/**
+ * @brief Envoie un message au serveur et teste que tout se passe bien.
+ * 
+ * @param msg message à envoyer
  */
 void sending(char *msg)
 {
@@ -31,6 +41,11 @@ void sending(char *msg)
     }
 }
 
+/**
+ * @brief Fonction principale du thread gérant le transfert de fichiers avec le serveur.
+ * 
+ * @param fileName nom du fichier à transférer
+ */
 void *sendFileForThread(void *fileName)
 {
     char *filename = (char *)malloc(100);
@@ -155,10 +170,12 @@ void *sendFileForThread(void *fileName)
     shutdown(dS_file, 2);
 }
 
-/*
- * Vérifie si le client souhaite utiliser une des commandes
- * Paramètres : char *msg : message du client à vérifier
- * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+/**
+ * @brief Vérifie si un client souhaite utiliser une des commandes
+ * disponibles.
+ * 
+ * @param msg message du client à vérifier
+ * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg)
 {
@@ -183,8 +200,8 @@ int useOfCommand(char *msg)
     return 0;
 }
 
-/*
- * Fonction pour le thread d'envoi
+/**
+ * @brief Fonction principale pour le thread gérant l'envoi de messages.
  */
 void *sendingForThread()
 {
@@ -214,11 +231,11 @@ void *sendingForThread()
     return NULL;
 }
 
-/*
- * Receptionne un message d'une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
- *              ssize_t size : taille maximum du message à recevoir
+/**
+ * @brief Réceptionne un message du serveur et teste que tout se passe bien.
+ * 
+ * @param rep buffer contenant le message reçu
+ * @param size taille maximum du message à recevoir
  */
 void receiving(char *rep, ssize_t size)
 {
@@ -229,8 +246,8 @@ void receiving(char *rep, ssize_t size)
     }
 }
 
-/*
- * Fonction pour le thread de réception
+/**
+ * @brief Fonction principale pour le thread gérant la réception de messages.
  */
 void *receivingForThread()
 {
@@ -246,7 +263,12 @@ void *receivingForThread()
     return NULL;
 }
 
-/* Signal Handler for SIGINT */
+/**
+ * @brief Fonction gérant l'interruption du programme par CTRL+C.
+ * Correspond à la gestion des signaux.
+ * 
+ * @param sig_num ???
+ */
 void sigintHandler(int sig_num)
 {
     printf("\nFin du programme avec Ctrl + C \n");
@@ -261,6 +283,9 @@ void sigintHandler(int sig_num)
     exit(1);
 }
 
+/*
+ * _____________________ MAIN _____________________
+ */
 // argv[1] = adresse ip
 // argv[2] = port
 int main(int argc, char *argv[])
