@@ -6,14 +6,14 @@
 #include <pthread.h>
 #include <signal.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <time.h>
 
-#define SIZE 1024
-
+char nomFichier[20];
 char *addrServeur;
 int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
-pthread_t thread_files;
 struct sockaddr_in aS;
 
 /*
@@ -44,37 +44,16 @@ void sending(char *msg)
 	}
 }
 
-void *sendFileForThread(void *filename)
+void *envoieFichier()
 {
-	// Création de la socket
-	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
-	if (dS_file == -1)
-	{
-		perror("[ENVOI FICHIER] Problème de création de socket client\n");
-		exit(-1);
-	}
-	printf("[ENVOI FICHIER] Socket Créé\n");
-
-	// Nommage de la socket
-    struct sockaddr_in aS_fileTransfer;
-    aS_fileTransfer.sin_family = AF_INET;
-    inet_pton(AF_INET, addrServeur, &(aS_fileTransfer.sin_addr));
-    aS_fileTransfer.sin_port = htons(atoi("3000") + 1);
-    socklen_t lgA = sizeof(struct sockaddr_in);
-
-	// Envoi d'une demande de connexion
-    printf("[FICHIER] Connection en cours...\n");
-    if (connect(dS_file, (struct sockaddr *)&aS_fileTransfer, lgA) < 0)
-    {
-        perror("[FICHIER] Problème de connexion au serveur\n");
-        exit(-1);
-    }
-	printf("[ENVOI FICHIER] Socket connectée\n");
-
+	printf("Nom : %s\n", nomFichier);
+	char *fileName = nomFichier;
+	printf("fichier : %s\n", fileName);
 	// DEBUT ENVOI FICHIER
-	char *path = malloc(100);
-	strcat(path, "./FichierClient/");
-	strcat(path, filename);
+	char *path = malloc(sizeof(char) * 50);
+	strcpy(path, "fichiers_client/");
+	strcat(path, fileName);
+	printf("%s\n", path);
 	FILE *stream = fopen(path, "r");
 	if (stream == NULL)
 	{
@@ -86,122 +65,111 @@ void *sendFileForThread(void *filename)
 	printf("[FICHIER] Taille du fichier : %d\n", length);
 	fseek(stream, 0, SEEK_SET);
 
-	 // Envoi de la taille du fichier, puis de son nom
-    if (send(dS_file, &length, sizeof(int), 0) == -1)
-    {
-        perror("Erreur au send");
-        exit(-1);
-    }
-    if (send(dS_file, filename, strlen(filename) + 1, 0) == -1)
-    {
-        perror("Erreur au send");
-        exit(-1);
-    }
+	printf("Nom du fichier choisi : %s\n", fileName);
 
 	// Lecture et stockage pour envoi du fichier
-	char *chaine = malloc(100);
 	char *toutFichier = malloc(length);
-	while (fgets(chaine, 100, stream) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
-	{
-		strcat(toutFichier, chaine);
-	}
-	if (send(dS_file, toutFichier, length + 1, 0) == -1)
-	{
-		perror("Erreur au send");
-		exit(-1);
-	}
-	free(chaine);
-	free(toutFichier);
+	fread(toutFichier, sizeof(char) * length, 1, stream);
+	free(path);
 	fclose(stream);
-	shutdown(dS_file, 2);
-}
 
-void *recvFileForThread(void *filename)
-{
+	printf("\n\nFichier obtenue : %s\n", toutFichier);
+
 	// Création de la socket
 	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS_file == -1)
 	{
-		perror("[ENVOI FICHIER] Problème de création de socket client\n");
+		perror("Problème de création de socket client\n");
 		exit(-1);
 	}
-	printf("[ENVOI FICHIER] Socket Créé\n");
+	printf("[FICHIER] Socket Créé\n");
 
 	// Nommage de la socket
-    struct sockaddr_in aS_fileTransfer;
-    aS_fileTransfer.sin_family = AF_INET;
-    inet_pton(AF_INET, addrServeur, &(aS_fileTransfer.sin_addr));
-    aS_fileTransfer.sin_port = htons(atoi("3000") + 1);
-    socklen_t lgA = sizeof(struct sockaddr_in);
+	aS.sin_family = AF_INET;
+	inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
+	aS.sin_port = htons(3001);
+	socklen_t lgA = sizeof(struct sockaddr_in);
 
 	// Envoi d'une demande de connexion
-    printf("[FICHIER] Connection en cours...\n");
-    if (connect(dS_file, (struct sockaddr *)&aS_fileTransfer, lgA) < 0)
-    {
-        perror("[FICHIER] Problème de connexion au serveur\n");
-        exit(-1);
-    }
-	printf("[ENVOI FICHIER] Socket connectée\n");
-
-	char *listeFichiers = (char *)malloc(sizeof(char) * 100);
-	if (recv(dS_file, listeFichiers, sizeof(char) * 100, 0) == -1)
+	printf("Connection en cours...\n");
+	if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
 	{
-		perror("Erreur au recv");
+		perror("Problème de connexion au serveur\n");
 		exit(-1);
 	}
-	printf("%s", listeFichiers);
-	char *rep = malloc(sizeof(int));
-	fgets(rep, 2, stdin);
-	if (send(dS_file, rep, strlen(rep) + 1, 0) == -1)
+	printf("Socket connectée\n");
+
+	if (send(dS_file, &length, sizeof(int), 0) == -1)
 	{
 		perror("Erreur au send");
 		exit(-1);
 	}
-
-	// Réception des informations du fichier
-	int tailleFichier;
-	char *nomFichier = (char *)malloc(sizeof(char) * 100);
-	if (recv(dS_file, &tailleFichier, sizeof(int), 0) == -1)
+	if (send(dS_file, fileName, sizeof(char) * 20, 0) == -1)
 	{
-		perror("Erreur au recv");
+		perror("Erreur au send");
 		exit(-1);
 	}
-	if (recv(dS_file, nomFichier, sizeof(char) * 100, 0) == -1)
+	if (send(dS_file, toutFichier, sizeof(char) * length, 0) == -1)
 	{
-		perror("Erreur au recv");
+		perror("Erreur au send");
 		exit(-1);
 	}
-	printf("%s\n", nomFichier);
-	printf("%d\n", tailleFichier);
+}
 
-	// Début réception du fichier
-	char *buffer = (char *)malloc(sizeof(char) * tailleFichier);
+void *receptionFichier(void * ds)
+{
+
+	int ds_file = (long)ds;
 	int returnCode;
 	int index;
 
-	char *emplacementFichier = (char *)malloc(sizeof(char) * 30);
-	strcat(emplacementFichier, "FichierClient/");
-	strcat(emplacementFichier, nomFichier);
+	char *fileName = malloc(sizeof(char) * 20);
+	int tailleFichier;
+
+	if (recv(ds_file, &tailleFichier, sizeof(int), 0) == -1)
+	{
+		printf("** fin de la communication **\n");
+		exit(-1);
+	}
+	printf("Taille : %d\n", tailleFichier);
+	if (recv(ds_file, fileName, sizeof(char) * 20, 0) == -1)
+	{
+		printf("** fin de la communication **\n");
+		exit(-1);
+	}
+
+	
+	char *buffer = malloc(sizeof(char) * tailleFichier);
+
+	if (recv(ds_file, buffer, sizeof(char) * tailleFichier, 0) == -1)
+	{
+		printf("** fin de la communication **\n");
+		exit(-1);
+	}
+
+	char *emplacementFichier = malloc(sizeof(char) * 200);
+	strcpy(emplacementFichier, "./fichiers_client/");
+	strcat(emplacementFichier, fileName);
 	FILE *stream = fopen(emplacementFichier, "w");
 	if (stream == NULL)
 	{
 		fprintf(stderr, "Cannot open file for writing\n");
-		exit(-1);
+		exit(EXIT_FAILURE);
 	}
 
-	if (recv(dS_file, buffer, sizeof(int), 0) == -1)
-	{
-		perror("Erreur au recv");
-		exit(-1);
-	}
 	printf("%s\n", buffer);
 
-	strcat(buffer, "\n");
-
-	if (1 != fwrite(buffer, tailleFichier + 1, 1, stream))
+	if (1 != fwrite(buffer, sizeof(char) * tailleFichier, 1, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
+		exit(EXIT_FAILURE);
 	}
+
+	fseek(stream, 0, SEEK_END);
+	int length = ftell(stream);
+	printf("[FICHIER] Taille du fichier : %d\n", length);
+	printf("[FICHIER] Taille du fichier : %d\n", tailleFichier);
+	fseek(stream, 0, SEEK_SET);
 
 	returnCode = fclose(stream);
 	if (returnCode == EOF)
@@ -209,23 +177,19 @@ void *recvFileForThread(void *filename)
 		fprintf(stderr, "Cannot close file\n");
 		exit(-1);
 	}
-	printf("kikoo\n");
+
+	if (tailleFichier != length)
+	{
+		remove(emplacementFichier);
+		shutdown(ds_file,2);
+		printf("Un problème est survenue\n");
+		printf("Veuillez choisir de nous le fichier que vous désirez\n");
+		useOfCommand("/télécharger\n");
+	}
+
 	free(buffer);
-	free(nomFichier);
 	free(emplacementFichier);
-
-	printf("Téléchargement du fichier terminé\n");
-	shutdown(dS_file, 2);
-}
-
-/*
- * Envoie le fichier donné en paramètre au serveur
- * Paramètres : FILE *fp : le fichier à envoyer
- *              int dS : la socket du serveur
- */
-void send_file(char *filename)
-{
-	pthread_create(&thread_files, NULL, sendFileForThread, (void *)filename);
+	shutdown(ds_file,2);
 }
 
 /*
@@ -237,24 +201,103 @@ int useOfCommand(char *msg)
 {
 	if (strcmp(msg, "/déposer\n") == 0)
 	{
-		sending("/déposer\n");
-		send_file("test.txt");
+		sending(msg);
+
+		char *tabFichier[50];
+		DIR *folder;
+		struct dirent *entry;
+		int files = 0;
+
+		folder = opendir("fichiers_client");
+		if (folder == NULL)
+		{
+			perror("Unable to read directory");
+			exit(-1);
+		}
+		entry = readdir(folder);
+		entry = readdir(folder);
+		while ((entry = readdir(folder)))
+		{
+
+			tabFichier[files] = entry->d_name;
+			printf("File %d: %s\n",
+				   files,
+				   entry->d_name);
+			files++;
+		}
+
+		closedir(folder);
+
+		char *rep = malloc(sizeof(char) * 2);
+		fgets(rep, 2, stdin);
+		printf("Fichier voulu %s\n", rep);
+		printf("%s\n", tabFichier[atoi(rep)]);
+		strcpy(nomFichier, tabFichier[atoi(rep)]);
+
+		printf("%s\n", nomFichier);
+		pthread_t test;
+
+		pthread_create(&test, NULL, envoieFichier, 0);
+
+		free(rep);
 		return 1;
 	}
 	else if (strcmp(msg, "/télécharger\n") == 0)
 	{
-		
-		sending("/télécharger\n");
-		pthread_t threadRecvFile;
 
-		if (pthread_create(&threadRecvFile, NULL, recvFileForThread, NULL) < 0 )
+		sending(msg);
+
+		// Création de la socket
+		int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+		if (dS_file == -1)
 		{
-			perror("Erreur\n");
+			perror("Problème de création de socket client\n");
 			exit(-1);
 		}
+		printf("[FICHIER] Socket Créé\n");
+
+		// Nommage de la socket
+		aS.sin_family = AF_INET;
+		inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
+		aS.sin_port = htons(3001);
+		socklen_t lgA = sizeof(struct sockaddr_in);
+
+		// Envoi d'une demande de connexion
+		printf("Connection en cours...\n");
+		if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
+		{
+			perror("Problème de connexion au serveur\n");
+			exit(-1);
+		}
+		printf("Socket connectée\n");
+
+		char *listeFichier = malloc(sizeof(char) * 200);
+		if (recv(dS_file, listeFichier, sizeof(char) * 200, 0) == -1)
+		{
+			printf("** fin de la communication **\n");
+			exit(-1);
+		}
+		printf("%s", listeFichier);
+
+		char *numFichier = malloc(sizeof(char) * 2);
+		fgets(numFichier, 2, stdin);
+		if (send(dS_file, numFichier, strlen(numFichier) + 1, 0) == -1)
+		{
+			perror("Erreur à l'envoi du mp");
+			exit(-1);
+		}
+		free(numFichier);
+
+		pthread_t thread_sending_file;
+		if (pthread_create(&thread_sending_file, NULL, receptionFichier, (void *) dS_file) < 0)
+		{
+			perror("Erreur de création de thread d'envoi client\n");
+			exit(-1);
+		}
+
 		return 1;
 	}
-	
+
 	return 0;
 }
 
@@ -365,7 +408,7 @@ int main(int argc, char *argv[])
 	socklen_t lgA = sizeof(struct sockaddr_in);
 
 	// Envoi d'une demande de connexion
-	printf("Connection en cours...\n");
+	printf("Connexion en cours...\n");
 	if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
 	{
 		perror("Problème de connexion au serveur\n");
@@ -403,15 +446,15 @@ int main(int argc, char *argv[])
 		printf("%s\n", repServeur);
 	}
 	free(myPseudo);
-	printf("Connection complète\n");
+	printf("Connexion complète\n");
 	boolConnect = 1;
 
 	//_____________________ Communication _____________________
 	// Création des threads
-	pthread_t thread_sendind;
+	pthread_t thread_sending;
 	pthread_t thread_receiving;
 
-	if (pthread_create(&thread_sendind, NULL, sendingForThread, 0) < 0)
+	if (pthread_create(&thread_sending, NULL, sendingForThread, 0) < 0)
 	{
 		perror("Erreur de création de thread d'envoi client\n");
 		exit(-1);
@@ -423,7 +466,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	pthread_join(thread_sendind, NULL);
+	pthread_join(thread_sending, NULL);
 	pthread_join(thread_receiving, NULL);
 
 	printf("Fin du programme\n");
