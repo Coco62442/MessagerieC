@@ -8,8 +8,13 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-/*
- * Définition d'une structure Client pour regrouper toutes les informations du client
+/**
+ * @brief Structure Client pour regrouper toutes les informations du client.
+ *
+ * @param isOccupied 1 si le Client est connecté au serveur ; 0 sinon
+ * @param dSC Socket de transmission des messages classiques au Client
+ * @param pseudo Appellation que le Client rentre à sa première connexion
+ * @param dSCFC Socket de transfert des fichiers
  */
 typedef struct Client Client;
 struct Client
@@ -18,45 +23,34 @@ struct Client
     long dSC;
     char *pseudo;
     long dSCFC;
-    long dSCFE;
 };
 
-typedef struct Fichier Fichier;
-struct Fichier
-{
-    int emplacementNonDisponible;
-    char *nomFichier;
-    int tailleFichier;
-};
-
-/*
+/**
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - nbClient = nombre de clients actuellement connectés
+ * - nbFichiers = nombre de fichiers actuellement en transfert
+ * - dS = socket de connexion pour le transfert de fichiers
+ * - semaphore = sémaphore pour gérer le nombre de clients
+ * - semaphoreThread = sémpahore pour gérer les threads
+ * - mutex = mutex pour la modification de tabClient[]
  */
-
 #define MAX_CLIENT 3
-#define MAX_FICHIER 4
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
-Fichier tabFichier[MAX_FICHIER];
 long nbClient = 0;
-int dS;
-int dS_file;
 int nbFichier = 0;
-
-// Création du sémaphore pour gérer le nombre de client
+int dS_file;
 sem_t semaphore;
-// Création du sémpahore pour gérer les threads
 sem_t semaphoreThread;
-// Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
 
-/*
- * Fonctions pour gérer les indices du tableaux de clients
- * Retour : un entier, indice du premier emplacement disponible
- *          -1 si tout les emplacements sont occupés.
+/**
+ * @brief Fonctions pour gérer les indices du tableaux de clients.
+ *
+ * @return un entier, indice du premier emplacement disponible ;
+ *         -1 si tout les emplacements sont occupés.
  */
 int giveNumClient()
 {
@@ -69,28 +63,16 @@ int giveNumClient()
         }
         i += 1;
     }
-    exit(-1);
-}
-
-int giveNumFichier()
-{
-    int i = 0;
-    while (i < MAX_FICHIER)
-    {
-        if (!tabFichier[i].emplacementNonDisponible)
-        {
-            return i;
-        }
-        i += 1;
-    }
     return -1;
 }
 
-/*
- * Fonctions pour vérifier que le pseudo est unique
- * Retour : un entier
- *          1 si le pseudo existe déjà
- *          0 si le pseudo n'existe pas.
+/**
+ * @brief Fonctions pour vérifier que le pseudo est unique.
+ *
+ * @param pseudo pseudo à vérifier
+ * @return un entier ;
+ *         1 si le pseudo existe déjà,
+ *         0 si le pseudo n'existe pas.
  */
 int verifPseudo(char *pseudo)
 {
@@ -107,11 +89,12 @@ int verifPseudo(char *pseudo)
     return 0;
 }
 
-/*
- * Envoie un message à toutes les sockets présentes dans le tableau des clients
- * et teste que tout se passe bien
- * Paramètres : int dS : expéditeur du message
- *              char *msg : message à envoyer
+/**
+ * @brief Envoie un message à toutes les sockets présentes dans le tableau des clients
+ * et teste que tout se passe bien.
+ *
+ * @param dS expéditeur du message
+ * @param msg message à envoyer
  */
 void sending(int dS, char *msg)
 {
@@ -129,9 +112,12 @@ void sending(int dS, char *msg)
     }
 }
 
-/*
- * Permet de récupérer le dSC pour un pseudo donné
- * Renvoie -1 si le pseudo n'existe pas
+/**
+ * @brief Fonction pour récupérer le dSC (socket client) selon un pseudo donné.
+ *
+ * @param pseudo pseudo pour lequel on cherche la socket
+ * @return socket du client nommé [pseudo] ;
+ *         -1 si le pseudo n'existe pas.
  */
 long pseudoTodSC(char *pseudo)
 {
@@ -147,11 +133,12 @@ long pseudoTodSC(char *pseudo)
     return -1;
 }
 
-/*
- * Envoie un message en mp à un client en particulier
- * et teste que tout se passe bien
- * Paramètres : int dSC : destinataire du msg
- *              char *msg : message à envoyer
+/**
+ * @brief Envoie un message en privé à un client en particulier
+ * et teste que tout se passe bien.
+ *
+ * @param pseudoReceiver destinataire du message
+ * @param msg message à envoyer
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
@@ -177,11 +164,12 @@ void sendingDM(char *pseudoReceiver, char *msg)
     }
 }
 
-/*
- * Receptionne un message d'une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
- *              ssize_t size : taille maximum du message à recevoir
+/**
+ * @brief Receptionne un message d'une socket et teste que tout se passe bien.
+ *
+ * @param dS socket sur laquelle recevoir
+ * @param rep buffer où stocker le message reçu
+ * @param size taille maximum du message à recevoir
  */
 void receiving(int dS, char *rep, ssize_t size)
 {
@@ -192,10 +180,11 @@ void receiving(int dS, char *rep, ssize_t size)
     }
 }
 
-/*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char * msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+/**
+ * @brief Fonction pour vérifier si un client souhaite quitter la communication.
+ *
+ * @param msg message du client à vérifier
+ * @return 1 si le client veut quitter, 0 sinon.
  */
 int endOfCommunication(char *msg)
 {
@@ -272,9 +261,9 @@ void *copieFichierThread(void *clientIndex)
     free(emplacementFichier);
     printf("3\n");
     int j = giveNumFichier();
-    tabFichier[j].emplacementNonDisponible = 1;
-    tabFichier[j].nomFichier = nomFichier;
-    tabFichier[j].tailleFichier = tailleFichier;
+    // tabFichier[j].emplacementNonDisponible = 1;
+    // tabFichier[j].nomFichier = nomFichier;
+    // tabFichier[j].tailleFichier = tailleFichier;
     nbFichier++;
 
     sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
@@ -289,7 +278,7 @@ void *envoieFichierThread(void *clientIndex)
     // Acceptons une connexion
     struct sockaddr_in aC;
     socklen_t lg = sizeof(struct sockaddr_in);
-    tabClient[i].dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
+    // tabClient[i].dSCFC = accept(dS, (struct sockaddr *)&aC, &lg);
     if (tabClient[i].dSCFC < 0)
     {
         perror("Problème lors de l'acceptation du client\n");
@@ -300,13 +289,13 @@ void *envoieFichierThread(void *clientIndex)
     printf("%d\n", nbFichier);
     for (int j = 0; j < nbFichier; j++)
     {
-        strcat(rep, j + "0");
-        strcat(rep, "\t");
-        printf("%s\n", tabFichier[j].nomFichier);
-        strcat(rep, tabFichier[j].nomFichier);
-        strcat(rep, "\t");
-        strcat(rep, tabFichier[j].tailleFichier + "0");
-        strcat(rep, "\n");
+        // strcat(rep, j + "0");
+        // strcat(rep, "\t");
+        // printf("%s\n", tabFichier[j].nomFichier);
+        // strcat(rep, tabFichier[j].nomFichier);
+        // strcat(rep, "\t");
+        // strcat(rep, tabFichier[j].tailleFichier + "0");
+        // strcat(rep, "\n");
     }
     printf("%s\n", rep);
     sendingDM(tabClient[i].pseudo, rep);
@@ -322,7 +311,7 @@ void *envoieFichierThread(void *clientIndex)
     // DEBUT ENVOI FICHIER
     char *path = malloc(100);
     strcat(path, "./FichierServeur/");
-    strcat(path, tabFichier[i].nomFichier);
+    // strcat(path, tabFichier[i].nomFichier);
     FILE *stream = fopen(path, "r");
     if (stream == NULL)
     {
@@ -340,11 +329,11 @@ void *envoieFichierThread(void *clientIndex)
         perror("Erreur au send");
         exit(-1);
     }
-    if (send(tabClient[i].dSCFC, tabFichier[i].nomFichier, strlen(tabFichier[i].nomFichier) + 1, 0) == -1)
-    {
-        perror("Erreur au send");
-        exit(-1);
-    }
+    // if (send(tabClient[i].dSCFC, tabFichier[i].nomFichier, strlen(tabFichier[i].nomFichier) + 1, 0) == -1)
+    // {
+    //     perror("Erreur au send");
+    //     exit(-1);
+    // }
 
     // Lecture et stockage pour envoi du fichier
     char *chaine = malloc(100);
@@ -364,9 +353,10 @@ void *envoieFichierThread(void *clientIndex)
     shutdown(tabClient[i].dSCFC, 2);
 }
 
-/*
- * Permet de JOIN les threads terminés
- * Paramètre : int numClient : indice du thread à join
+/**
+ * @brief Permet de JOIN les threads terminés.
+ *
+ * @param numclient indice du thread à join
  */
 void endOfThread(int numclient)
 {
@@ -374,10 +364,13 @@ void endOfThread(int numclient)
     sem_post(&semaphoreThread);
 }
 
-/*
- * Vérifie si un client souhaite utiliser une des commandes
- * Paramètres : char *msg : message du client à vérifier
- * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+/**
+ * @brief Vérifie si un client souhaite utiliser une des commandes
+ * disponibles.
+ *
+ * @param msg message du client à vérifier
+ * @param pseudoSender pseudo du client qui envoie le message
+ * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg, char *pseudoSender)
 {
@@ -451,8 +444,8 @@ int useOfCommand(char *msg, char *pseudoSender)
         {
             char *chaine = (char *)malloc(100);
             char *toutFichier = (char *)malloc(length);
-            while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
-            {
+            while (fgets(chaine, 100, fichierCom) != NULL)
+            { // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
                 strcat(toutFichier, chaine);
             }
             sendingDM(pseudoSender, toutFichier);
@@ -532,6 +525,13 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 /*
  * Start routine de pthread_create()
+ */
+
+/**
+ * @brief Fonction principale de communication entre un
+ * client et le serveur.
+ * 
+ * @param clientParam numéro du client en question
  */
 void *communication(void *clientParam)
 {
@@ -635,6 +635,7 @@ int main(int argc, char *argv[])
     printf("[Fichier] Mode écoute\n");
 
     // Création de la socket
+    int dS;
     dS = socket(PF_INET, SOCK_STREAM, 0);
     if (dS < 0)
     {
