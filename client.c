@@ -392,7 +392,7 @@ void *receivingForThread()
  * @brief Fonction gérant l'interruption du programme par CTRL+C.
  * Correspond à la gestion des signaux.
  *
- * @param sig_num ???
+ * @param sig_num numéro du signal
  */
 void sigintHandler(int sig_num)
 {
