@@ -19,7 +19,7 @@ struct Client
 	long dSC;
 	char *pseudo;
 	long dSCFC;
-	char *nomFichier;
+	char nomFichier[100];
 };
 
 /*
@@ -183,7 +183,7 @@ int endOfCommunication(char *msg)
 	return 0;
 }
 
-int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
+void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 {
 	printf("%s\n", nomFichier);
 	printf("%s\n", buffer);
@@ -222,7 +222,6 @@ int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 		if (strcmp(tabFichierDossier[i], nomFichier) == 0)
 		{
 			printf("fichier deja existant\n");
-			return 0;
 		}
 		i++;
 	}
@@ -318,11 +317,11 @@ void *copieFichierThread(void *clientIndex)
 void *envoieFichierThread(void *clientIndex)
 {
 	int i = (long)clientIndex;
-	char *nomFichier;
+	char *nomFichier = malloc(sizeof(char) * 100);
 	strcpy(nomFichier, tabClient[i].nomFichier);
 
 	// DEBUT ENVOI FICHIER
-	char *path = malloc(50);
+	char *path = malloc(sizeof(char) * 120);
 	strcpy(path, "./fichiers_serveur/");
 	strcat(path, nomFichier);
 	FILE *stream = fopen(path, "r");
@@ -349,7 +348,7 @@ void *envoieFichierThread(void *clientIndex)
 	}
 
 	// Lecture et stockage pour envoi du fichier
-	char *toutFichier = malloc(length);
+	char *toutFichier = malloc(sizeof(char) * length);
 	fread(toutFichier, sizeof(char) * length, 1, stream);
 	fclose(stream);
 
@@ -359,8 +358,13 @@ void *envoieFichierThread(void *clientIndex)
 		exit(-1);
 	}
 
+	printf("1\n");
+	free(nomFichier);
+	printf("1\n");
 	free(path);
+	printf("1\n");
 	free(toutFichier);
+	printf("4\n");
 	fclose(stream);
 	shutdown(tabClient[i].dSCFC, 2);
 }
@@ -539,11 +543,11 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		char *afficheFichiers = malloc(sizeof(char) * 200);
-		char *tabFichierDossier[50];
 
 		DIR *folder;
 		struct dirent *entry;
 		int files = 0;
+		char nbFiles[10];
 
 		folder = opendir("fichiers_serveur");
 		if (folder == NULL)
@@ -555,11 +559,12 @@ int useOfCommand(char *msg, char *pseudoSender)
 		entry = readdir(folder);
 		entry = readdir(folder);
 		strcpy(afficheFichiers, "Liste des fichiers disponibles :\n");
+		printf("coucou\n");
 		while ((entry = readdir(folder)))
 		{
-			tabFichierDossier[files] = entry->d_name;
+			sprintf(nbFiles, "%d", files);
 			strcat(afficheFichiers, "File ");
-			strcat(afficheFichiers, files + "0");
+			strcat(afficheFichiers, nbFiles);
 			strcat(afficheFichiers, ": ");
 			strcat(afficheFichiers, entry->d_name);
 			strcat(afficheFichiers, "\n");
@@ -582,7 +587,25 @@ int useOfCommand(char *msg, char *pseudoSender)
 			exit(-1);
 		}
 
-		strcpy(tabClient[i].nomFichier, tabFichierDossier[numFichier]);
+		folder = opendir("fichiers_serveur");
+		if (folder == NULL)
+		{
+			perror("Unable to read directory");
+			exit(EXIT_FAILURE);
+		}
+
+		entry = readdir(folder);
+		entry = readdir(folder);
+		int j = 0;
+		while (j <= numFichier)
+		{
+			entry = readdir(folder);
+			j++;
+		}
+		char *nomFichier = entry->d_name;
+		closedir(folder);
+
+		strcpy(tabClient[i].nomFichier, nomFichier);
 
 		pthread_t envoieFichier;
 
@@ -620,7 +643,10 @@ void *communication(void *clientParam)
 		strcpy(msgToVerif, msgReceived);
 		if (useOfCommand(msgToVerif, pseudoSender))
 		{
+
+			printf("5\n");
 			free(msgReceived);
+			printf("6\n");
 			printf("free\n");
 			continue;
 		}

@@ -116,7 +116,7 @@ void *envoieFichier()
 	}
 }
 
-void *receptionFichier(void * ds)
+void *receptionFichier(void *ds)
 {
 
 	int ds_file = (long)ds;
@@ -137,8 +137,8 @@ void *receptionFichier(void * ds)
 		printf("** fin de la communication **\n");
 		exit(-1);
 	}
+	printf("Nom : %s\n", fileName);
 
-	
 	char *buffer = malloc(sizeof(char) * tailleFichier);
 
 	if (recv(ds_file, buffer, sizeof(char) * tailleFichier, 0) == -1)
@@ -181,15 +181,16 @@ void *receptionFichier(void * ds)
 	if (tailleFichier != length)
 	{
 		remove(emplacementFichier);
-		shutdown(ds_file,2);
+		shutdown(ds_file, 2);
 		printf("Un problème est survenue\n");
 		printf("Veuillez choisir de nous le fichier que vous désirez\n");
 		useOfCommand("/télécharger\n");
 	}
 
+	free(fileName);
 	free(buffer);
 	free(emplacementFichier);
-	shutdown(ds_file,2);
+	shutdown(ds_file, 2);
 }
 
 /*
@@ -279,9 +280,14 @@ int useOfCommand(char *msg)
 		}
 		printf("%s", listeFichier);
 
-		char *numFichier = malloc(sizeof(char) * 2);
-		fgets(numFichier, 2, stdin);
-		if (send(dS_file, numFichier, strlen(numFichier) + 1, 0) == -1)
+		char *numFichier = malloc(sizeof(char) * 5);
+		fgets(numFichier, 5, stdin);
+		printf("numChoisi %s\n", numFichier);
+		printf("strlen %ld\n", strlen(numFichier));
+		int val = atoi(numFichier);
+
+
+		if (send(dS_file, &val, sizeof(int), 0) == -1)
 		{
 			perror("Erreur à l'envoi du mp");
 			exit(-1);
@@ -289,7 +295,7 @@ int useOfCommand(char *msg)
 		free(numFichier);
 
 		pthread_t thread_sending_file;
-		if (pthread_create(&thread_sending_file, NULL, receptionFichier, (void *) dS_file) < 0)
+		if (pthread_create(&thread_sending_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
 		{
 			perror("Erreur de création de thread d'envoi client\n");
 			exit(-1);
@@ -375,7 +381,7 @@ void sigintHandler(int sig_num)
 		sending(myPseudoEnd);
 	}
 	sleep(0.2);
-	sending("** a quitté la communication **\n");
+	sending("/fin\n");
 	exit(1);
 }
 
