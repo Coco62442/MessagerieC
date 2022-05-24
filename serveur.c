@@ -13,6 +13,7 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <semaphore.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -33,10 +34,10 @@ typedef struct Salon Salon;
 struct Salon
 {
     int idSalon;
-    int isOccupiedSalon;
+    int isOccupied;
     long dSCS;
-    char * nom; // max 40 ?
-    char * description;
+    char nom[40]; // max 40
+    char description[100]; // max 100
     int nbPlace;
 };
 
@@ -82,6 +83,25 @@ int giveNumClient()
     while (i < MAX_CLIENT)
     {
         if (!tabClient[i].isOccupied)
+        {
+            return i;
+        }
+        i += 1;
+    }
+    exit(-1);
+}
+
+/*
+ * Fonctions pour gérer les indices du tableaux de salons
+ * Retour : un entier, indice du premier emplacement disponible
+ *          -1 si tout les emplacements sont occupés.
+ */
+int giveNumSalon()
+{
+    int i = 0;
+    while (i < MAX_SALON)
+    {
+        if (!tabSalon[i].isOccupied)
         {
             return i;
         }
@@ -326,52 +346,73 @@ int useOfCommand(char *msg, char *pseudoSender)
     {
         int i = 0;
         long dSCS;
-        char *chaine = malloc(MAX_SALON*60); // nom salon max 40
+        char *chaine = malloc(140); // nom salon max 40 + desc 100
         while (i < MAX_SALON)
         {
             if (tabSalon[i].isOccupied == 1)
             {
-                strcat(chaine, tabSalon[i].idSalon);
+                strcat(chaine, (char*)tabSalon[i].idSalon); // warning à la compilation)
                 strcat(chaine, ") nom : ");
-                strcat(chaine, tabSalon[i].nom);
+                strcat(chaine, (char*)tabSalon[i].nom);
                 strcat(chaine, " desc : ");
-                strcat(chaine, tabSalon[i].description);
+                strcat(chaine, (char*)tabSalon[i].description);
                 strcat(chaine, "\n");
+                sendingDM(pseudoSender, chaine);
             }
             i++;
         }
-        sendingDM(pseudoSender, chaine);
         free(chaine);
 		
-		char *numSalon = malloc(sizeof(char)); // num salon
-		if(strcmp(receiving(pseudoSender, numSalon, sizeof(char)))){
-			i = 0;
-			while (i < MAX_SALON)
-			{
-				if (tabSalon[i].isOccupied == 1 && strcmp(tabSalon[i].idSalon,numSalon))
-				{
-					// 
-					int dSCS;
-					// Vérifions si on peut accepter un client
-					// On attends la disponibilité du sémaphore
-					sem_wait(&semaphoreSalon);
+		int numSalon; // num salon
+        i = 0;
+        while (i < MAX_CLIENT)
+        {
+            if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
+            {
+                break;
+            }
+            i++;
+        }
+        if (i == MAX_CLIENT)
+        {
+            perror("Pseudo pas trouvé");
+            exit(-1);
+        }
+		receiving(tabClient[i].dSC, (char*)&numSalon, sizeof(int));
+        i = 0;
+        while (i < MAX_SALON)
+        {
+            if (tabSalon[i].isOccupied == 1 && tabSalon[i].idSalon==numSalon)
+            {
+                // 
+                int dSCS;
 
-					// Acceptons une connexion
-					struct sockaddr_in aC;
-					socklen_t lg = sizeof(struct sockaddr_in);
-					dSCS = accept(dS, (struct sockaddr *)&aC, &lg);
-					if (dSCS < 0)
-					{
-						perror("Problème lors de l'acceptation du client\n");
-						exit(-1);
-					}
-					printf("Client %ld connecté au salon %s\n", pseudoSender, numSalon);
+                // Initialisation du sémaphore pour gérer les threads
+                sem_init(&semaphoreSalon, PTHREAD_PROCESS_SHARED, 1);
+                
+                struct timespec ts;
+                if (clock_gettime(CLOCK_REALTIME, &ts) == -1){
+                    return -1;
+                }
+                ts.tv_sec += 10;
+                int sem_timedwait(&semaphoreSalon, &ts); // semaphoreSalon inconnu encore car créé dans la création des salons
 
-					// EN COURS PAS SÛRE
-				}
-				i++;
-			}
-		}
+                // Acceptons une connexion
+                struct sockaddr_in aC;
+                socklen_t lg = sizeof(struct sockaddr_in);
+                dSCS = accept(dS, (struct sockaddr *)&aC, &lg);
+                if (dSCS < 0)
+                {
+                    perror("Problème lors de l'acceptation du client\n");
+                    exit(-1);
+                }
+                printf("Client %s connecté au salon %d\n", pseudoSender, numSalon);
+
+                // dSC client prends la valeur du dSCS du salon
+                tabClient[i].dSC = dSCS;
+            }
+            i++;
+        }
         return 1;
     }
     return 0;
