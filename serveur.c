@@ -23,6 +23,20 @@ struct Client
 };
 
 /*
+ * Définition d'une structure Salon pour regrouper toutes les informations d'un salon
+ */
+typedef struct Salon Salon;
+struct Salon
+{
+    int idSalon;
+    int isOccupiedSalon;
+    long dSCS;
+    char nom[40];
+    char * description;
+    int nbPlace;
+};
+
+/*
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
@@ -252,14 +266,14 @@ void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 		exit(-1);
 	}
 
+	
 	if (tailleFichier != length)
 	{
 		remove(emplacementFichier);
-		ecritureFichier(nomFichier, buffer, tailleFichier);
 		free(emplacementFichier);
+		ecritureFichier(nomFichier, buffer, tailleFichier);
 	}
-
-	free(emplacementFichier);
+	else {free(emplacementFichier);}
 }
 
 void *copieFichierThread(void *clientIndex)
