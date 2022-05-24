@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <signal.h>
 
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
@@ -35,6 +36,7 @@ struct Client
  * - nbClients = nombre de clients actuellement connectés
  * - nbFiles = nombre de fichiers actuellement en transfert
  * - dS_file = socket de connexion pour le transfert de fichiers
+ * - dS = socket de connexion entre les clients et le serveur
  * - semaphore = sémaphore pour gérer le nombre de clients
  * - semaphoreThread = sémpahore pour gérer les threads
  * - mutex = mutex pour la modification de tabClient[]
@@ -45,6 +47,7 @@ pthread_t tabThread[MAX_CLIENT];
 long nbClients = 0;
 int nbFiles = 0;
 int dS_file;
+int dS = 0;
 sem_t semaphore;
 sem_t semaphoreThread;
 pthread_mutex_t mutex;
@@ -706,6 +709,34 @@ void *communication(void *clientParam)
     return NULL;
 }
 
+/**
+ * @brief Fonction gérant l'interruption du programme par CTRL+C.
+ * Correspond à la gestion des signaux.
+ *
+ * @param sig_num numéro du signal
+ */
+void sigintHandler(int sig_num)
+{
+    printf("\nFin du serveur\n");
+    if (dS != 0)
+    {
+        sending(dS, "LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
+        int i = 0;
+        while (i < MAX_CLIENT)
+        {
+            if (tabClient[i].isOccupied)
+            {
+                endOfThread(i);
+            }
+            i += 1;
+        }
+        shutdown(dS, 2);
+        sem_destroy(&semaphore);
+        sem_destroy(&semaphoreThread);
+    }
+    exit(1);
+}
+
 /*
  * _____________________ MAIN _____________________
  */
@@ -719,6 +750,10 @@ int main(int argc, char *argv[])
         exit(-1);
     }
     printf("Début programme\n");
+
+    // Fin avec Ctrl + C
+    signal(SIGINT, sigintHandler);
+
     // Création de la socket
     dS_file = socket(PF_INET, SOCK_STREAM, 0);
     if (dS_file < 0)
@@ -749,7 +784,6 @@ int main(int argc, char *argv[])
     printf("[Fichier] Mode écoute\n");
 
     // Création de la socket
-    int dS;
     dS = socket(PF_INET, SOCK_STREAM, 0);
     if (dS < 0)
     {
