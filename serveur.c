@@ -560,7 +560,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Erreur à l'envoi du mp");
 			exit(-1);
 		}
-		
 
 		int numFichier;
 		if (recv(tabClient[i].dSCFC, &numFichier, sizeof(int), 0) == -1)
@@ -597,7 +596,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		free(afficheFichiers);
 		return 1;
-		
 	}
 
 	return 0;

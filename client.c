@@ -46,26 +46,23 @@ void sending(char *msg)
 
 void *envoieFichier()
 {
-	printf("Nom : %s\n", nomFichier);
 	char *fileName = nomFichier;
-	printf("fichier : %s\n", fileName);
+
 	// DEBUT ENVOI FICHIER
 	char *path = malloc(sizeof(char) * 50);
 	strcpy(path, "fichiers_client/");
 	strcat(path, fileName);
-	printf("%s\n", path);
+
 	FILE *stream = fopen(path, "r");
 	if (stream == NULL)
 	{
 		fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
 		exit(-1);
 	}
+
 	fseek(stream, 0, SEEK_END);
 	int length = ftell(stream);
-	printf("[FICHIER] Taille du fichier : %d\n", length);
 	fseek(stream, 0, SEEK_SET);
-
-	printf("Nom du fichier choisi : %s\n", fileName);
 
 	// Lecture et stockage pour envoi du fichier
 	char *toutFichier = malloc(length);
@@ -73,16 +70,14 @@ void *envoieFichier()
 	free(path);
 	fclose(stream);
 
-	printf("\n\nFichier obtenue : %s\n", toutFichier);
-
 	// Création de la socket
 	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+
 	if (dS_file == -1)
 	{
 		perror("Problème de création de socket client\n");
 		exit(-1);
 	}
-	printf("[FICHIER] Socket Créé\n");
 
 	// Nommage de la socket
 	aS.sin_family = AF_INET;
@@ -131,13 +126,12 @@ void *receptionFichier(void *ds)
 		printf("** fin de la communication **\n");
 		exit(-1);
 	}
-	printf("Taille : %d\n", tailleFichier);
+
 	if (recv(ds_file, fileName, sizeof(char) * 20, 0) == -1)
 	{
 		printf("** fin de la communication **\n");
 		exit(-1);
 	}
-	printf("Nom : %s\n", fileName);
 
 	char *buffer = malloc(sizeof(char) * tailleFichier);
 
@@ -157,8 +151,6 @@ void *receptionFichier(void *ds)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("%s\n", buffer);
-
 	if (1 != fwrite(buffer, sizeof(char) * tailleFichier, 1, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
@@ -167,8 +159,6 @@ void *receptionFichier(void *ds)
 
 	fseek(stream, 0, SEEK_END);
 	int length = ftell(stream);
-	printf("[FICHIER] Taille du fichier : %d\n", length);
-	printf("[FICHIER] Taille du fichier : %d\n", tailleFichier);
 	fseek(stream, 0, SEEK_SET);
 
 	returnCode = fclose(stream);
@@ -285,7 +275,6 @@ int useOfCommand(char *msg)
 		printf("numChoisi %s\n", numFichier);
 		printf("strlen %ld\n", strlen(numFichier));
 		int val = atoi(numFichier);
-
 
 		if (send(dS_file, &val, sizeof(int), 0) == -1)
 		{
