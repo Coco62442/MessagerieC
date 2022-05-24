@@ -185,10 +185,6 @@ int endOfCommunication(char *msg)
 
 void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 {
-	printf("%s\n", nomFichier);
-	printf("%s\n", buffer);
-	printf("%d\n", tailleFichier);
-
 	char *tabFichierDossier[50];
 	DIR *folder;
 	struct dirent *entry;
@@ -203,12 +199,10 @@ void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 
 	while ((entry = readdir(folder)))
 	{
-
 		tabFichierDossier[files] = entry->d_name;
 		printf("File %d: %s\n",
 			   files,
 			   entry->d_name);
-
 		files++;
 	}
 
@@ -272,7 +266,6 @@ void *copieFichierThread(void *clientIndex)
 {
 	int i = (long)clientIndex;
 
-	printf("%d\n", i);
 	// Acceptons une connexion
 	struct sockaddr_in aC;
 	socklen_t lg = sizeof(struct sockaddr_in);
@@ -293,19 +286,15 @@ void *copieFichierThread(void *clientIndex)
 		exit(-1);
 	}
 	receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 20);
-	printf("%s\n", nomFichier);
-	printf("%d\n", tailleFichier);
 
 	// Début réception du fichier
 	char *buffer = malloc(sizeof(char) * tailleFichier);
 
 	receiving(tabClient[i].dSCFC, buffer, tailleFichier);
-	printf("%s\n", buffer);
 
 	ecritureFichier(nomFichier, buffer, tailleFichier);
 
 	nbFichier++;
-	printf("Nbfichier : %d\n", nbFichier);
 
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
 
@@ -332,7 +321,6 @@ void *envoieFichierThread(void *clientIndex)
 	}
 	fseek(stream, 0, SEEK_END);
 	int length = ftell(stream);
-	printf("[FICHIER] Taille du fichier : %d\n", length);
 	fseek(stream, 0, SEEK_SET);
 
 	// Envoi de la taille du fichier, puis de son nom
@@ -358,13 +346,9 @@ void *envoieFichierThread(void *clientIndex)
 		exit(-1);
 	}
 
-	printf("1\n");
 	free(nomFichier);
-	printf("1\n");
 	free(path);
-	printf("1\n");
 	free(toutFichier);
-	printf("4\n");
 	fclose(stream);
 	shutdown(tabClient[i].dSCFC, 2);
 }
@@ -559,7 +543,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		entry = readdir(folder);
 		entry = readdir(folder);
 		strcpy(afficheFichiers, "Liste des fichiers disponibles :\n");
-		printf("coucou\n");
 		while ((entry = readdir(folder)))
 		{
 			sprintf(nbFiles, "%d", files);
@@ -570,7 +553,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			strcat(afficheFichiers, "\n");
 			files++;
 		}
-		printf("%s\n", afficheFichiers);
 		closedir(folder);
 
 		if (send(tabClient[i].dSCFC, afficheFichiers, strlen(afficheFichiers) + 1, 0) == -1)
@@ -578,7 +560,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Erreur à l'envoi du mp");
 			exit(-1);
 		}
-		free(afficheFichiers);
+		
 
 		int numFichier;
 		if (recv(tabClient[i].dSCFC, &numFichier, sizeof(int), 0) == -1)
@@ -613,7 +595,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			perror("Erreur thread create");
 		}
+		free(afficheFichiers);
 		return 1;
+		
 	}
 
 	return 0;
