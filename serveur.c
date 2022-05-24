@@ -196,6 +196,7 @@ int endOfCommunication(char *msg)
 {
     if (strcmp(msg, "/fin\n") == 0)
     {
+        strcpy(msg, "** a quitté la communication **\n");
         return 1;
     }
     return 0;
@@ -344,6 +345,7 @@ void *copieFichierThread(void *clientIndex)
  */
 void *envoieFichierThread(void *clientIndex)
 {
+    printf("rentre dans envoiethread\n");
     int i = (long)clientIndex;
     char *nomFichier = malloc(sizeof(char) * 100);
     strcpy(nomFichier, tabClient[i].nomFichier);
@@ -385,11 +387,17 @@ void *envoieFichierThread(void *clientIndex)
         exit(-1);
     }
 
+    printf("1\n");
     free(nomFichier);
+    printf("2\n");
     free(path);
+    printf("3\n");
     free(toutFichier);
+    printf("4\n");
     fclose(stream);
+    printf("5\n");
     shutdown(tabClient[i].dSCFC, 2);
+    printf("6\n");
 }
 
 /**
@@ -637,7 +645,9 @@ int useOfCommand(char *msg, char *pseudoSender)
         {
             perror("Erreur thread create");
         }
+        printf("affichefichier avant\n");
         free(afficheFichiers);
+        printf("affichefichier après\n");
         return 1;
     }
 
@@ -671,11 +681,7 @@ void *communication(void *clientParam)
         strcpy(msgToVerif, msgReceived);
         if (useOfCommand(msgToVerif, pseudoSender))
         {
-
-            printf("5\n");
             free(msgReceived);
-            printf("6\n");
-            printf("free\n");
             continue;
         }
 
