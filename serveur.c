@@ -395,7 +395,7 @@ int useOfCommand(char *msg, char *pseudoSender)
                     return -1;
                 }
                 ts.tv_sec += 10;
-                int sem_timedwait(&semaphoreSalon, &ts); // semaphoreSalon inconnu encore car créé dans la création des salons
+                sem_timedwait(&semaphoreSalon, &ts); // semaphoreSalon inconnu encore car créé dans la création des salons
 
                 // Acceptons une connexion
                 struct sockaddr_in aC;
