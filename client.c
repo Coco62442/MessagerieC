@@ -140,6 +140,8 @@ void *receptionFichier(void *ds)
 		printf("** fin de la communication **\n");
 		exit(-1);
 	}
+	printf("%s\n", buffer);
+	printf("Taille fichier = %d\n", tailleFichier);
 
 	char *emplacementFichier = malloc(sizeof(char) * 200);
 	strcpy(emplacementFichier, "./fichiers_client/");
@@ -151,7 +153,7 @@ void *receptionFichier(void *ds)
 		exit(EXIT_FAILURE);
 	}
 
-	if (1 != fwrite(buffer, sizeof(char) * tailleFichier, 1, stream))
+	if (tailleFichier != fwrite(buffer, sizeof(char), tailleFichier, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
 		exit(EXIT_FAILURE);
@@ -178,7 +180,9 @@ void *receptionFichier(void *ds)
 	}
 
 	free(fileName);
+	sleep(0.2);
 	free(buffer);
+	sleep(0.2);
 	free(emplacementFichier);
 	shutdown(ds_file, 2);
 }

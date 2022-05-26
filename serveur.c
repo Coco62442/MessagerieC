@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <time.h>
 
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
@@ -28,12 +29,12 @@ struct Client
 typedef struct Salon Salon;
 struct Salon
 {
-    int idSalon;
-    int isOccupiedSalon;
-    long dSCS;
-    char nom[40];
-    char * description;
-    int nbPlace;
+	int idSalon;
+	int isOccupiedSalon;
+	long dSCS;
+	char nom[40];
+	char *description;
+	int nbPlace;
 };
 
 /*
@@ -197,7 +198,7 @@ int endOfCommunication(char *msg)
 	return 0;
 }
 
-void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
+int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 {
 	char *tabFichierDossier[50];
 	DIR *folder;
@@ -214,22 +215,18 @@ void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 	while ((entry = readdir(folder)))
 	{
 		tabFichierDossier[files] = entry->d_name;
-		printf("File %d: %s\n",
-			   files,
-			   entry->d_name);
 		files++;
 	}
 
 	closedir(folder);
 
 	int i = 0;
-	printf("1\n");
 	while (i < files)
 	{
-		printf("%s\n", tabFichierDossier[i]);
 		if (strcmp(tabFichierDossier[i], nomFichier) == 0)
 		{
 			printf("fichier deja existant\n");
+			return -1;
 		}
 		i++;
 	}
@@ -266,14 +263,17 @@ void ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 		exit(-1);
 	}
 
-	
 	if (tailleFichier != length)
 	{
 		remove(emplacementFichier);
 		free(emplacementFichier);
 		ecritureFichier(nomFichier, buffer, tailleFichier);
 	}
-	else {free(emplacementFichier);}
+	else
+	{
+		free(emplacementFichier);
+	}
+	return 0;
 }
 
 void *copieFichierThread(void *clientIndex)
@@ -306,7 +306,10 @@ void *copieFichierThread(void *clientIndex)
 
 	receiving(tabClient[i].dSCFC, buffer, tailleFichier);
 
-	ecritureFichier(nomFichier, buffer, tailleFichier);
+	if (ecritureFichier(nomFichier, buffer, tailleFichier) < 0)
+	{
+		sendingDM(tabClient[i].pseudo, "\nFichier déjà existant\nMerci de changer le nom du fichier\n");
+	}
 
 	nbFichier++;
 
@@ -337,26 +340,29 @@ void *envoieFichierThread(void *clientIndex)
 	int length = ftell(stream);
 	fseek(stream, 0, SEEK_SET);
 
+	// Lecture et stockage pour envoi du fichier
+	char *toutFichier = malloc(sizeof(char) * length);
+	int tailleFichier = (int)fread(toutFichier, sizeof(char), length, stream);
+	printf("Bytes fichier %d\n", tailleFichier);
+	printf("Taille fichier %d\n", length);
+
+	
+
 	// Envoi de la taille du fichier, puis de son nom
 	if (send(tabClient[i].dSCFC, &length, sizeof(int), 0) == -1)
 	{
-		perror("Erreur au send");
+		perror("Erreur au send tailleFichier");
 		exit(-1);
 	}
 	if (send(tabClient[i].dSCFC, nomFichier, strlen(nomFichier) + 1, 0) == -1)
 	{
-		perror("Erreur au send");
+		perror("Erreur au send nomFichier");
 		exit(-1);
 	}
 
-	// Lecture et stockage pour envoi du fichier
-	char *toutFichier = malloc(sizeof(char) * length);
-	fread(toutFichier, sizeof(char) * length, 1, stream);
-	fclose(stream);
-
-	if (send(tabClient[i].dSCFC, toutFichier, length, 0) == -1)
+	if (send(tabClient[i].dSCFC, toutFichier, sizeof(char) * length, 0) == -1)
 	{
-		perror("Erreur au send");
+		perror("Erreur au send toutFichier");
 		exit(-1);
 	}
 
@@ -405,13 +411,14 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		// Préparation du message à envoyer
 		char *msgToSend = (char *)malloc(sizeof(char) * 115);
-		strcat(msgToSend, pseudoSender);
+		strcpy(msgToSend, pseudoSender);
 		strcat(msgToSend, " vous chuchotte : ");
 		strcat(msgToSend, msg);
 
 		// Envoi du message au destinataire
 		printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
 		sendingDM(pseudoReceiver, msgToSend);
+		printf("422\n");
 		free(msgToSend);
 		return 1;
 	}
@@ -459,7 +466,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 				strcat(toutFichier, chaine);
 			}
 			sendingDM(pseudoSender, toutFichier);
+			printf("473\n");
 			free(chaine);
+			printf("475\n");
 			free(toutFichier);
 		}
 		else
@@ -478,7 +487,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			if (tabClient[i].isOccupied)
 			{
 				char *msgToSend = (char *)malloc(sizeof(char) * 30);
-				strcat(msgToSend, tabClient[i].pseudo);
+				strcpy(msgToSend, tabClient[i].pseudo);
 				strcat(msgToSend, " est en ligne\n");
 				sendingDM(pseudoSender, msgToSend);
 				free(msgToSend);
@@ -640,16 +649,13 @@ void *communication(void *clientParam)
 		if (useOfCommand(msgToVerif, pseudoSender))
 		{
 
-			printf("5\n");
 			free(msgReceived);
-			printf("6\n");
-			printf("free\n");
 			continue;
 		}
 
 		// Ajout du pseudo de l'expéditeur devant le message à envoyer
 		char *msgToSend = (char *)malloc(sizeof(char) * 115);
-		strcat(msgToSend, pseudoSender);
+		strcpy(msgToSend, pseudoSender);
 		strcat(msgToSend, " : ");
 		strcat(msgToSend, msgReceived);
 		free(msgReceived);
