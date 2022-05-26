@@ -50,7 +50,6 @@ pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
 int dS;
 int dS_file;
-int nbFichier = 0;
 
 // Création du sémaphore pour gérer le nombre de client
 sem_t semaphore;
@@ -234,7 +233,7 @@ int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 	int returnCode;
 	int index;
 
-	char *emplacementFichier = malloc(sizeof(char) * 50);
+	char *emplacementFichier = malloc(sizeof(char) * 40);
 	strcpy(emplacementFichier, "./fichiers_serveur/");
 	strcat(emplacementFichier, nomFichier);
 	FILE *stream = fopen(emplacementFichier, "w");
@@ -244,7 +243,7 @@ int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 		exit(-1);
 	}
 
-	if (1 != fwrite(buffer, sizeof(char) * tailleFichier, 1, stream))
+	if (tailleFichier != fwrite(buffer, sizeof(char), tailleFichier, stream))
 	{
 		fprintf(stderr, "Cannot write block in file\n");
 		exit(EXIT_FAILURE);
@@ -311,7 +310,6 @@ void *copieFichierThread(void *clientIndex)
 		sendingDM(tabClient[i].pseudo, "\nFichier déjà existant\nMerci de changer le nom du fichier\n");
 	}
 
-	nbFichier++;
 
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
 
@@ -342,7 +340,7 @@ void *envoieFichierThread(void *clientIndex)
 
 	// Lecture et stockage pour envoi du fichier
 	char *toutFichier = malloc(sizeof(char) * length);
-	int tailleFichier = (int)fread(toutFichier, sizeof(char), length, stream);
+	int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
 	printf("Bytes fichier %d\n", tailleFichier);
 	printf("Taille fichier %d\n", length);
 

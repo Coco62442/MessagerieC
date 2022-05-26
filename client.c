@@ -48,28 +48,6 @@ void *envoieFichier()
 {
 	char *fileName = nomFichier;
 
-	// DEBUT ENVOI FICHIER
-	char *path = malloc(sizeof(char) * 50);
-	strcpy(path, "fichiers_client/");
-	strcat(path, fileName);
-
-	FILE *stream = fopen(path, "r");
-	if (stream == NULL)
-	{
-		fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
-		exit(-1);
-	}
-
-	fseek(stream, 0, SEEK_END);
-	int length = ftell(stream);
-	fseek(stream, 0, SEEK_SET);
-
-	// Lecture et stockage pour envoi du fichier
-	char *toutFichier = malloc(length);
-	fread(toutFichier, sizeof(char) * length, 1, stream);
-	free(path);
-	fclose(stream);
-
 	// Création de la socket
 	int dS_file = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -94,6 +72,30 @@ void *envoieFichier()
 	}
 	printf("Socket connectée\n");
 
+	// DEBUT ENVOI FICHIER
+	char *path = malloc(sizeof(char) * 40);
+	strcpy(path, "fichiers_client/");
+	strcat(path, fileName);
+
+	FILE *stream = fopen(path, "r");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
+		exit(-1);
+	}
+
+	fseek(stream, 0, SEEK_END);
+	int length = ftell(stream);
+	fseek(stream, 0, SEEK_SET);
+
+	// Lecture et stockage pour envoi du fichier
+	char *toutFichier = malloc(sizeof(char) * length);
+	int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
+	free(path);
+	fclose(stream);
+
+	
+
 	if (send(dS_file, &length, sizeof(int), 0) == -1)
 	{
 		perror("Erreur au send");
@@ -104,7 +106,7 @@ void *envoieFichier()
 		perror("Erreur au send");
 		exit(-1);
 	}
-	if (send(dS_file, toutFichier, sizeof(char) * length, 0) == -1)
+	if (send(dS_file, toutFichier, sizeof(char) * tailleFichier, 0) == -1)
 	{
 		perror("Erreur au send");
 		exit(-1);
