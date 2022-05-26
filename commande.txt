@@ -8,11 +8,21 @@
   
   Envoyer un message à tout les utilisateurs connectés :
   'message'
+
+  Liste des utilisateurs en ligne :
+  '/enLigne'
+
+  Savoir si un utilisateur est en ligne :
+  '/estConnecte nomUtilisateur'
+
+  Déposer un fichier au serveur présent dans le dossier "fichiers_client" :
+  '/déposer'
+
+  Télécharger un fichier du serveur disponible :
+  '/télécharger'
   
   Se déconnecter :
   '/fin'
   
   Non implémenté :
   - mode hors ligne
-  - liste utilisateurs connectés
-  - recherche utilisateur connecté

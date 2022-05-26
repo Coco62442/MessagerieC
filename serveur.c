@@ -1,3 +1,8 @@
+// #######  	CHANGEMENT  	##############
+// variable globale nbFiles disparait (sers a rien)
+// mutex qd on incremente nbclient l900 environ
+
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -8,10 +13,16 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <time.h>
+#include <signal.h>
 
-/*
- * Définition d'une structure Client pour regrouper toutes les informations du client
+/**
+ * @brief Structure Client pour regrouper toutes les informations du client.
+ *
+ * @param isOccupied 1 si le Client est connecté au serveur ; 0 sinon
+ * @param dSC Socket de transmission des messages classiques au Client
+ * @param pseudo Appellation que le Client rentre à sa première connexion
+ * @param dSCFC Socket de transfert des fichiers
+ * @param nomFichier Nomination du fichier choisi par le client pour le transfert
  */
 typedef struct Client Client;
 struct Client
@@ -37,31 +48,33 @@ struct Salon
 	int nbPlace;
 };
 
-/*
+/**
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
- * - nbClient = nombre de clients actuellement connectés
+ * - nbClients = nombre de clients actuellement connectés
+ * - dS_file = socket de connexion pour le transfert de fichiers
+ * - dS = socket de connexion entre les clients et le serveur
+ * - semaphore = sémaphore pour gérer le nombre de clients
+ * - semaphoreThread = sémpahore pour gérer les threads
+ * - mutex = mutex pour la modification de tabClient[]
  */
 
 #define MAX_CLIENT 3
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 long nbClient = 0;
-int dS;
 int dS_file;
-
-// Création du sémaphore pour gérer le nombre de client
+int dS;
 sem_t semaphore;
-// Création du sémpahore pour gérer les threads
 sem_t semaphoreThread;
-// Création du mutex pour la modification de tabClient[]
 pthread_mutex_t mutex;
 
-/*
- * Fonctions pour gérer les indices du tableaux de clients
- * Retour : un entier, indice du premier emplacement disponible
- *          -1 si tout les emplacements sont occupés.
+/**
+ * @brief Fonctions pour gérer les indices du tableaux de clients.
+ *
+ * @return un entier, indice du premier emplacement disponible ;
+ *         -1 si tout les emplacements sont occupés.
  */
 int giveNumClient()
 {
@@ -74,14 +87,16 @@ int giveNumClient()
 		}
 		i += 1;
 	}
-	exit(-1);
+	return -1;
 }
 
-/*
- * Fonctions pour vérifier que le pseudo est unique
- * Retour : un entier
- *          1 si le pseudo existe déjà
- *          0 si le pseudo n'existe pas.
+/**
+ * @brief Fonctions pour vérifier que le pseudo est unique.
+ *
+ * @param pseudo pseudo à vérifier
+ * @return un entier ;
+ *         1 si le pseudo existe déjà,
+ *         0 si le pseudo n'existe pas.
  */
 int verifPseudo(char *pseudo)
 {
@@ -92,17 +107,17 @@ int verifPseudo(char *pseudo)
 		{
 			return 1;
 		}
-
 		i++;
 	}
 	return 0;
 }
 
-/*
- * Envoie un message à toutes les sockets présentes dans le tableau des clients
- * et teste que tout se passe bien
- * Paramètres : int dS : expéditeur du message
- *              char *msg : message à envoyer
+/**
+ * @brief Envoie un message à toutes les sockets présentes dans le tableau des clients
+ * et teste que tout se passe bien.
+ *
+ * @param dS expéditeur du message
+ * @param msg message à envoyer
  */
 void sending(int dS, char *msg)
 {
@@ -120,9 +135,12 @@ void sending(int dS, char *msg)
 	}
 }
 
-/*
- * Permet de récupérer le dSC pour un pseudo donné
- * Renvoie -1 si le pseudo n'existe pas
+/**
+ * @brief Fonction pour récupérer le dSC (socket client) selon un pseudo donné.
+ *
+ * @param pseudo pseudo pour lequel on cherche la socket
+ * @return socket du client nommé [pseudo] ;
+ *         -1 si le pseudo n'existe pas.
  */
 long pseudoTodSC(char *pseudo)
 {
@@ -138,11 +156,12 @@ long pseudoTodSC(char *pseudo)
 	return -1;
 }
 
-/*
- * Envoie un message en mp à un client en particulier
- * et teste que tout se passe bien
- * Paramètres : int dSC : destinataire du msg
- *              char *msg : message à envoyer
+/**
+ * @brief Envoie un message en privé à un client en particulier
+ * et teste que tout se passe bien.
+ *
+ * @param pseudoReceiver destinataire du message
+ * @param msg message à envoyer
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
@@ -168,11 +187,12 @@ void sendingDM(char *pseudoReceiver, char *msg)
 	}
 }
 
-/*
- * Receptionne un message d'une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
- *              ssize_t size : taille maximum du message à recevoir
+/**
+ * @brief Receptionne un message d'une socket et teste que tout se passe bien.
+ *
+ * @param dS socket sur laquelle recevoir
+ * @param rep buffer où stocker le message reçu
+ * @param size taille maximum du message à recevoir
  */
 void receiving(int dS, char *rep, ssize_t size)
 {
@@ -183,20 +203,30 @@ void receiving(int dS, char *rep, ssize_t size)
 	}
 }
 
-/*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char * msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+/**
+ * @brief Fonction pour vérifier si un client souhaite quitter la communication.
+ *
+ * @param msg message du client à vérifier
+ * @return 1 si le client veut quitter, 0 sinon.
  */
 int endOfCommunication(char *msg)
 {
 	if (strcmp(msg, "/fin\n") == 0)
 	{
+		strcpy(msg, "** a quitté la communication **\n");
 		return 1;
 	}
 	return 0;
 }
 
+/**
+ * @brief Fonction permettant de recréer le fichier [nomFichier]
+ * avec le contenu [buffer].
+ *
+ * @param nomFichier appellation du fichier à écrire
+ * @param buffer contenu du fichier reçu
+ * @param tailleFichier taille du fichier reçu
+ */
 int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 {
 	char *tabFichierDossier[50];
@@ -275,6 +305,11 @@ int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 	return 0;
 }
 
+/**
+ * @brief Fonction principale pour le thread gérant la copie de fichiers.
+ *
+ * @param clientIndex numéro du client qui envoie le fichier
+ */
 void *copieFichierThread(void *clientIndex)
 {
 	int i = (long)clientIndex;
@@ -318,6 +353,12 @@ void *copieFichierThread(void *clientIndex)
 	shutdown(tabClient[i].dSCFC, 2);
 }
 
+/**
+ * @brief Fonction principale pour le thread gérant l'envoi de fichiers
+ * à un client donné en paramètre.
+ *
+ * @param clientIndex numéro du client qui souhaite recevoir le fichier
+ */
 void *envoieFichierThread(void *clientIndex)
 {
 	int i = (long)clientIndex;
@@ -371,9 +412,10 @@ void *envoieFichierThread(void *clientIndex)
 	shutdown(tabClient[i].dSCFC, 2);
 }
 
-/*
- * Permet de JOIN les threads terminés
- * Paramètre : int numClient : indice du thred à join
+/**
+ * @brief Permet de JOIN les threads terminés.
+ *
+ * @param numclient indice du thread à join
  */
 void endOfThread(int numclient)
 {
@@ -381,10 +423,13 @@ void endOfThread(int numclient)
 	sem_post(&semaphoreThread);
 }
 
-/*
- * Vérifie si un client souhaite utiliser une des commandes
- * Paramètres : char *msg : message du client à vérifier
- * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+/**
+ * @brief Vérifie si un client souhaite utiliser une des commandes
+ * disponibles.
+ *
+ * @param msg message du client à vérifier
+ * @param pseudoSender pseudo du client qui envoie le message
+ * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg, char *pseudoSender)
 {
@@ -396,7 +441,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		pseudoReceiver = strtok(NULL, " ");
 		if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
 		{
-			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication");
+			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication\n");
 			printf("Commande \"/mp\" mal utilisée\n");
 			return 0;
 		}
@@ -404,6 +449,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		msg = strtok(NULL, "");
 		if (msg == NULL)
 		{
+			sendingDM(pseudoSender, "Message à envoyé vide\n\"/aide\" pour plus d'indication\n");
 			printf("Commande \"/mp\" mal utilisée\n");
 			return 0;
 		}
@@ -416,11 +462,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 		// Envoi du message au destinataire
 		printf("Envoi du message de %s au clients %s.\n", pseudoSender, pseudoReceiver);
 		sendingDM(pseudoReceiver, msgToSend);
-		printf("422\n");
 		free(msgToSend);
 		return 1;
 	}
-	else if (strcmp(strToken, "/isConnecte") == 0)
+	else if (strcmp(strToken, "/estConnecte") == 0)
 	{
 		// Récupération du pseudo
 		char *pseudoToCheck = (char *)malloc(sizeof(char) * 100);
@@ -457,16 +502,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		if (fichierCom != NULL)
 		{
-			char *chaine = (char *)malloc(100);
+			// char *chaine = (char *)malloc(100);
 			char *toutFichier = (char *)malloc(length);
-			while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
-			{
-				strcat(toutFichier, chaine);
-			}
+			fread(toutFichier, sizeof(char), length, fichierCom);
+			// while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
+			// {
+			// 	strcat(toutFichier, chaine);
+			// }
 			sendingDM(pseudoSender, toutFichier);
-			printf("473\n");
-			free(chaine);
-			printf("475\n");
+			// free(chaine);
 			free(toutFichier);
 		}
 		else
@@ -552,7 +596,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		DIR *folder;
 		struct dirent *entry;
 		int files = 0;
-		char nbFiles[10];
+		char numFile[10];
 
 		folder = opendir("fichiers_serveur");
 		if (folder == NULL)
@@ -566,9 +610,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		strcpy(afficheFichiers, "Liste des fichiers disponibles :\n");
 		while ((entry = readdir(folder)))
 		{
-			sprintf(nbFiles, "%d", files);
+			sprintf(numFile, "%d", files);
 			strcat(afficheFichiers, "File ");
-			strcat(afficheFichiers, nbFiles);
+			strcat(afficheFichiers, numFile);
 			strcat(afficheFichiers, ": ");
 			strcat(afficheFichiers, entry->d_name);
 			strcat(afficheFichiers, "\n");
@@ -622,8 +666,11 @@ int useOfCommand(char *msg, char *pseudoSender)
 	return 0;
 }
 
-/*
- * Start routine de pthread_create()
+/**
+ * @brief Fonction principale de communication entre un
+ * client et le serveur.
+ *
+ * @param clientParam numéro du client en question
  */
 void *communication(void *clientParam)
 {
@@ -646,7 +693,6 @@ void *communication(void *clientParam)
 		strcpy(msgToVerif, msgReceived);
 		if (useOfCommand(msgToVerif, pseudoSender))
 		{
-
 			free(msgReceived);
 			continue;
 		}
@@ -681,6 +727,35 @@ void *communication(void *clientParam)
 	return NULL;
 }
 
+/**
+ * @brief Fonction gérant l'interruption du programme par CTRL+C.
+ * Correspond à la gestion des signaux.
+ *
+ * @param sig_num numéro du signal
+ */
+void sigintHandler(int sig_num)
+{
+    printf("\nFin du serveur\n");
+    if (dS != 0)
+    {
+        sending(dS, "LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
+        int i = 0;
+        while (i < MAX_CLIENT)
+        {
+            if (tabClient[i].isOccupied)
+            {
+                endOfThread(i);
+            }
+            i += 1;
+        }
+        shutdown(dS, 2);
+        sem_destroy(&semaphore);
+        sem_destroy(&semaphoreThread);
+		pthread_mutex_destroy(&mutex);
+    }
+    exit(1);
+}
+
 /*
  * _____________________ MAIN _____________________
  */
@@ -694,6 +769,10 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 	printf("Début programme\n");
+
+	// Fin avec Ctrl + C
+    signal(SIGINT, sigintHandler);
+
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
 	if (dS_file < 0)
@@ -816,11 +895,16 @@ int main(int argc, char *argv[])
 		}
 
 		// On a un client en plus sur le serveur, on incrémente
+		pthread_mutex_lock(&mutex);
 		nbClient += 1;
+		pthread_mutex_unlock(&mutex);
 		printf("Clients connectés : %ld\n", nbClient);
 	}
+	// ############  	N'arrive jamais  	####################
 	shutdown(dS, 2);
 	sem_destroy(&semaphore);
 	sem_destroy(&semaphoreThread);
+	pthread_mutex_destroy(&mutex);
 	printf("Fin du programme\n");
+	// #########################################################
 }

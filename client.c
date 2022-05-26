@@ -9,17 +9,30 @@
 #include <dirent.h>
 #include <time.h>
 
+/**
+ * - DOSSIER_ENVOI_FICHIERS = chemin du fichier dans lequel sont stockés les fichiers de transfert
+ * - nomFichier = nom du fichier à transférer
+ * - isEnd = booléen vérifiant si le client est connecté ou s'il a terminé la discussion avec le serveur
+ * - dS = socket du serveur
+ * - boolConnect = booléen vérifiant si le client est connecté afin de gérer les signaux (CTRL+C)
+ * - thread_files = thread gérant le transfert de fichiers
+ * - addrServeur = adresse du serveur sur laquelle est connecté le client
+ * - portServeur = port du serveur sur lequel est connecté le client
+ * - aS = structure contenant toutes les informations de connexion du client au serveur
+ */
+char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 char nomFichier[20];
-char *addrServeur;
 int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
+char *addrServeur;
 struct sockaddr_in aS;
 
-/*
- * Vérifie si un client souhaite quitter la communication
- * Paramètres : char ** msg : message du client à vérifier
- * Retour : 1 (vrai) si le client veut quitter, 0 (faux) sinon
+/**
+ * @brief Vérifie si un client souhaite quitter la communication.
+ *
+ * @param msg message du client à vérifier
+ * @return 1 si le client veut quitter, 0 sinon.
  */
 int endOfCommunication(char *msg)
 {
@@ -30,10 +43,10 @@ int endOfCommunication(char *msg)
 	return 0;
 }
 
-/*
- * Envoie un message à une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à envoyer
+/**
+ * @brief Envoie un message au serveur et teste que tout se passe bien.
+ *
+ * @param msg message à envoyer
  */
 void sending(char *msg)
 {
@@ -44,6 +57,9 @@ void sending(char *msg)
 	}
 }
 
+/**
+ * @brief Fonction principale du thread gérant le transfert de fichiers vers le serveur.
+ */
 void *envoieFichier()
 {
 	char *fileName = nomFichier;
@@ -93,8 +109,6 @@ void *envoieFichier()
 	int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
 	free(path);
 	fclose(stream);
-
-	
 
 	if (send(dS_file, &length, sizeof(int), 0) == -1)
 	{
@@ -225,18 +239,26 @@ int useOfCommand(char *msg)
 
 		closedir(folder);
 
-		char *rep = malloc(sizeof(char) * 2);
-		fgets(rep, 2, stdin);
-		printf("Fichier voulu %s\n", rep);
-		printf("%s\n", tabFichier[atoi(rep)]);
-		strcpy(nomFichier, tabFichier[atoi(rep)]);
+		int rep;
+		scanf("%d", &rep);
+		printf("Fichier voulu %d\n", rep);
+		while (rep < 0 || rep >= files)
+		{
+			printf("REP1 :%d\n", rep);
+			printf("Veuillez entrer un numéro valide\n");
+			scanf("%d", &rep);
+			printf("REP2 :%d\n", rep);
+		}
+
+		printf("%s\n", tabFichier[rep]);
+		strcpy(nomFichier, tabFichier[rep]);
 
 		printf("%s\n", nomFichier);
 		pthread_t test;
 
 		pthread_create(&test, NULL, envoieFichier, 0);
 
-		free(rep);
+		// free(rep);
 		return 1;
 	}
 	else if (strcmp(msg, "/télécharger\n") == 0)
