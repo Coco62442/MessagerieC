@@ -2,7 +2,6 @@
 // variable globale nbFiles disparait (sers a rien)
 // mutex qd on incremente nbclient l900 environ
 
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -29,6 +28,7 @@ struct Client
 {
 	int isOccupied;
 	long dSC;
+	int idSalon;
 	char *pseudo;
 	long dSCFC;
 	char nomFichier[100];
@@ -42,8 +42,7 @@ struct Salon
 {
 	int idSalon;
 	int isOccupiedSalon;
-	long dSCS;
-	char nom[40];
+	char *nom;
 	char *description;
 	int nbPlace;
 };
@@ -61,8 +60,10 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
+#define MAX_SALON 5
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
+Salon tabSalon[MAX_SALON];
 long nbClient = 0;
 int dS_file;
 int dS;
@@ -119,12 +120,27 @@ int verifPseudo(char *pseudo)
  * @param dS expéditeur du message
  * @param msg message à envoyer
  */
-void sending(int dS, char *msg)
+void sending(int dS, char *msg, int id)
 {
 	for (int i = 0; i < MAX_CLIENT; i++)
 	{
 		// On n'envoie pas au client qui a écrit le message
-		if (tabClient[i].isOccupied && dS != tabClient[i].dSC)
+		if (tabClient[i].isOccupied && dS != tabClient[i].dSC && id == tabClient[i].idSalon)
+		{
+			if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
+			{
+				perror("Erreur au send");
+				exit(-1);
+			}
+		}
+	}
+}
+
+void sendingAll(char *msg) {
+	for (int i = 0; i < MAX_CLIENT; i++)
+	{
+		// On n'envoie pas au client qui a écrit le message
+		if (tabClient[i].isOccupied)
 		{
 			if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
 			{
@@ -345,7 +361,6 @@ void *copieFichierThread(void *clientIndex)
 		sendingDM(tabClient[i].pseudo, "\nFichier déjà existant\nMerci de changer le nom du fichier\n");
 	}
 
-
 	sendingDM(tabClient[i].pseudo, "Téléchargement du fichier terminé\n");
 
 	free(buffer);
@@ -384,8 +399,6 @@ void *envoieFichierThread(void *clientIndex)
 	int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
 	printf("Bytes fichier %d\n", tailleFichier);
 	printf("Taille fichier %d\n", length);
-
-	
 
 	// Envoi de la taille du fichier, puis de son nom
 	if (send(tabClient[i].dSCFC, &length, sizeof(int), 0) == -1)
@@ -706,7 +719,7 @@ void *communication(void *clientParam)
 
 		// Envoi du message aux autres clients
 		printf("Envoi du message aux %ld clients. \n", nbClient - 1);
-		sending(tabClient[numClient].dSC, msgToSend);
+		sending(tabClient[numClient].dSC, msgToSend, tabClient[numClient].idSalon);
 		free(msgToSend);
 	}
 
@@ -714,6 +727,7 @@ void *communication(void *clientParam)
 	pthread_mutex_lock(&mutex);
 	nbClient = nbClient - 1;
 	tabClient[numClient].isOccupied = 0;
+	free(tabClient[numClient].pseudo);
 	pthread_mutex_unlock(&mutex);
 	shutdown(tabClient[numClient].dSC, 2);
 
@@ -735,25 +749,27 @@ void *communication(void *clientParam)
  */
 void sigintHandler(int sig_num)
 {
-    printf("\nFin du serveur\n");
-    if (dS != 0)
-    {
-        sending(dS, "LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
-        int i = 0;
-        while (i < MAX_CLIENT)
-        {
-            if (tabClient[i].isOccupied)
-            {
-                endOfThread(i);
-            }
-            i += 1;
-        }
-        shutdown(dS, 2);
-        sem_destroy(&semaphore);
-        sem_destroy(&semaphoreThread);
+	printf("\nFin du serveur\n");
+	if (dS != 0)
+	{
+		sendingAll("LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
+		sendingAll("Tout ce message est le code secret pour désactiver les clients");
+		
+		int i = 0;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied)
+			{
+				endOfThread(i);
+			}
+			i += 1;
+		}
+		shutdown(dS, 2);
+		sem_destroy(&semaphore);
+		sem_destroy(&semaphoreThread);
 		pthread_mutex_destroy(&mutex);
-    }
-    exit(1);
+	}
+	exit(1);
 }
 
 /*
@@ -771,7 +787,13 @@ int main(int argc, char *argv[])
 	printf("Début programme\n");
 
 	// Fin avec Ctrl + C
-    signal(SIGINT, sigintHandler);
+	signal(SIGINT, sigintHandler);
+
+	tabSalon[0].idSalon = 0;
+	tabSalon[0].isOccupiedSalon = 1;
+	tabSalon[0].nom = malloc(sizeof(char) * 40);
+	tabSalon[0].nom = "Chat générale";
+	tabSalon[0].description = "Salon général par défaut";
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
@@ -874,6 +896,7 @@ int main(int argc, char *argv[])
 		tabClient[numClient].dSC = dSC;
 		tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
 		strcpy(tabClient[numClient].pseudo, pseudo);
+		tabClient[numClient].idSalon = 0;
 		pthread_mutex_unlock(&mutex);
 
 		// On envoie un message pour dire au client qu'il est bien connecté
@@ -885,7 +908,7 @@ int main(int argc, char *argv[])
 		{
 			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
 			strcat(pseudo, " a rejoint la communication\n");
-			sending(dSC, pseudo);
+			sending(dSC, pseudo, 0);
 		}
 		free(pseudo);
 		//_____________________ Communication _____________________

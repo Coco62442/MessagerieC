@@ -1,4 +1,4 @@
-  -------Commande disponible :
+  -------Commandes disponibles :
   
   Afficher l'aide :
   '/aide'

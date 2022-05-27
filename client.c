@@ -1,3 +1,6 @@
+// les threads sont instancies en global
+// si receiving recoit le code de deconnexion serveur receiving s arrete et kill thread sending pr termine le client
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -27,6 +30,10 @@ int dS = -1;
 int boolConnect = 0;
 char *addrServeur;
 struct sockaddr_in aS;
+
+// Création des threads
+pthread_t thread_sending;
+pthread_t thread_receiving;
 
 /**
  * @brief Vérifie si un client souhaite quitter la communication.
@@ -379,11 +386,18 @@ void *receivingForThread()
 	{
 		char *r = (char *)malloc(sizeof(char) * 100);
 		receiving(r, sizeof(char) * 100);
+		if (strcmp(r, "Tout ce message est le code secret pour désactiver les clients") == 0)
+		{
+			free(r);
+			break;
+		}
+
 		// strcpy(r, strcat(r, "\n4 > "));
 		printf("%s", r);
 		free(r);
 	}
 	shutdown(dS, 2);
+	pthread_cancel(thread_sending);
 	return NULL;
 }
 
@@ -473,9 +487,6 @@ int main(int argc, char *argv[])
 	boolConnect = 1;
 
 	//_____________________ Communication _____________________
-	// Création des threads
-	pthread_t thread_sending;
-	pthread_t thread_receiving;
 
 	if (pthread_create(&thread_sending, NULL, sendingForThread, 0) < 0)
 	{
@@ -493,4 +504,6 @@ int main(int argc, char *argv[])
 	pthread_join(thread_receiving, NULL);
 
 	printf("Fin du programme\n");
+
+	return 1;
 }
