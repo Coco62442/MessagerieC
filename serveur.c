@@ -1,6 +1,21 @@
-// #######  	CHANGEMENT  	##############
+// #######  	CHANGEMENTS  	##############
+// ajout ds la struct client l id du salon sur lequel il est co
+// ajout de la struct Salon
 // variable globale nbFiles disparait (sers a rien)
-// mutex qd on incremente nbclient l900 environ
+// ajout variable globale MAX_SALON
+// instanciation du tableau tabSalon[MAX_SALON]
+// changement de la fct sending()
+// ajout de la fct sendingAll()
+// fct ecritureFichier() renvoie mtn un int si ca c'est bien passe ou non (fichier existant ou nn)
+// + changement de la fct ecriture fichier au niv des fwrite et fread surtt
+// ptits changements d envoieFichierThread aussi
+// changements fct useOfommand du type on prend en compt qu il a mis un / ou il a mal utilise la commande
+// mutex qd on incremente nbclient l941 environ
+// ds la fct useOfCommands je prends en compte si le message commence par un '/' 
+// ds ce cas j envoie pas le message et lui dit de faire /aide
+// changement fct ctrl + c pr qu il finisse bien les clients
+// l919 connection sur le salon generale
+// ajout de la variable globale portServeur
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -67,6 +82,7 @@ Salon tabSalon[MAX_SALON];
 long nbClient = 0;
 int dS_file;
 int dS;
+int portServeur;
 sem_t semaphore;
 sem_t semaphoreThread;
 pthread_mutex_t mutex;
@@ -279,7 +295,7 @@ int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier)
 	int returnCode;
 	int index;
 
-	char *emplacementFichier = malloc(sizeof(char) * 40);
+	char *emplacementFichier = malloc(sizeof(char) * 120);
 	strcpy(emplacementFichier, "./fichiers_serveur/");
 	strcat(emplacementFichier, nomFichier);
 	FILE *stream = fopen(emplacementFichier, "w");
@@ -343,13 +359,13 @@ void *copieFichierThread(void *clientIndex)
 
 	// Réception des informations du fichier
 	int tailleFichier;
-	char *nomFichier = (char *)malloc(sizeof(char) * 20);
+	char *nomFichier = (char *)malloc(sizeof(char) * 100);
 	if (recv(tabClient[i].dSCFC, &tailleFichier, sizeof(int), 0) == -1)
 	{
 		perror("Erreur au recv");
 		exit(-1);
 	}
-	receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 20);
+	receiving(tabClient[i].dSCFC, nomFichier, sizeof(char) * 100);
 
 	// Début réception du fichier
 	char *buffer = malloc(sizeof(char) * tailleFichier);
@@ -456,7 +472,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\n\"/aide\" pour plus d'indication\n");
 			printf("Commande \"/mp\" mal utilisée\n");
-			return 0;
+			return 1;
 		}
 		char *msg = (char *)malloc(sizeof(char) * 115);
 		msg = strtok(NULL, "");
@@ -464,7 +480,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Message à envoyé vide\n\"/aide\" pour plus d'indication\n");
 			printf("Commande \"/mp\" mal utilisée\n");
-			return 0;
+			return 1;
 		}
 		// Préparation du message à envoyer
 		char *msgToSend = (char *)malloc(sizeof(char) * 115);
@@ -541,7 +557,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			if (tabClient[i].isOccupied)
 			{
-				char *msgToSend = (char *)malloc(sizeof(char) * 30);
+				char *msgToSend = (char *)malloc(sizeof(char) * 120);
 				strcpy(msgToSend, tabClient[i].pseudo);
 				strcat(msgToSend, " est en ligne\n");
 				sendingDM(pseudoSender, msgToSend);
@@ -675,6 +691,12 @@ int useOfCommand(char *msg, char *pseudoSender)
 		free(afficheFichiers);
 		return 1;
 	}
+	else if (strToken[0] == '/')
+	{
+		sendingDM(pseudoSender, "Faites \"/aide\" pour avoir accès aux commandes disponibles et leur fonctionnement\n");
+		return 1;
+	}
+	
 
 	return 0;
 }
@@ -754,7 +776,7 @@ void sigintHandler(int sig_num)
 	{
 		sendingAll("LE SERVEUR S'EST MOMENTANEMENT ARRETE, DECONNEXION...\n");
 		sendingAll("Tout ce message est le code secret pour désactiver les clients");
-		
+
 		int i = 0;
 		while (i < MAX_CLIENT)
 		{
@@ -786,6 +808,8 @@ int main(int argc, char *argv[])
 	}
 	printf("Début programme\n");
 
+	portServeur = atoi(argv[1]);
+
 	// Fin avec Ctrl + C
 	signal(SIGINT, sigintHandler);
 
@@ -808,7 +832,7 @@ int main(int argc, char *argv[])
 	struct sockaddr_in ad_file;
 	ad_file.sin_family = AF_INET;
 	ad_file.sin_addr.s_addr = INADDR_ANY;
-	ad_file.sin_port = htons(3001);
+	ad_file.sin_port = htons(portServeur + 1);
 	if (bind(dS_file, (struct sockaddr *)&ad_file, sizeof(ad_file)) < 0)
 	{
 		perror("[Fichier] Erreur lors du nommage de la socket");

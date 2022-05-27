@@ -1,5 +1,9 @@
+// #######  	CHANGEMENTS  	##############
 // les threads sont instancies en global
 // si receiving recoit le code de deconnexion serveur receiving s arrete et kill thread sending pr termine le client
+// ajout de la variable portServeur
+// envoieFichier comme pr le serveur retouchée
+// changements ds useOfCommands
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -29,6 +33,7 @@ int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
 char *addrServeur;
+int portServeur;
 struct sockaddr_in aS;
 
 // Création des threads
@@ -83,7 +88,7 @@ void *envoieFichier()
 	// Nommage de la socket
 	aS.sin_family = AF_INET;
 	inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
-	aS.sin_port = htons(3001);
+	aS.sin_port = htons(portServeur + 1);
 	socklen_t lgA = sizeof(struct sockaddr_in);
 
 	// Envoi d'une demande de connexion
@@ -134,6 +139,11 @@ void *envoieFichier()
 	}
 }
 
+/**
+ * @brief Fonction principale du thread gérant le transfert de fichier depuis le serveur.
+ *
+ * @param ds socket du serveur
+ */
 void *receptionFichier(void *ds)
 {
 
@@ -141,18 +151,18 @@ void *receptionFichier(void *ds)
 	int returnCode;
 	int index;
 
-	char *fileName = malloc(sizeof(char) * 20);
+	char *fileName = malloc(sizeof(char) * 100);
 	int tailleFichier;
 
 	if (recv(ds_file, &tailleFichier, sizeof(int), 0) == -1)
 	{
-		printf("** fin de la communication **\n");
+		perror("Erreur au recv de fichier\n** fin de la communication **\n");
 		exit(-1);
 	}
 
-	if (recv(ds_file, fileName, sizeof(char) * 20, 0) == -1)
+	if (recv(ds_file, fileName, sizeof(char) * 100, 0) == -1)
 	{
-		printf("** fin de la communication **\n");
+		printf("Erreur au recv de fichier\n** fin de la communication **\n");
 		exit(-1);
 	}
 
@@ -160,13 +170,13 @@ void *receptionFichier(void *ds)
 
 	if (recv(ds_file, buffer, sizeof(char) * tailleFichier, 0) == -1)
 	{
-		printf("** fin de la communication **\n");
+		printf("Erreur au recv de fichier\n** fin de la communication **\n");
 		exit(-1);
 	}
 	printf("%s\n", buffer);
 	printf("Taille fichier = %d\n", tailleFichier);
 
-	char *emplacementFichier = malloc(sizeof(char) * 200);
+	char *emplacementFichier = malloc(sizeof(char) * 120);
 	strcpy(emplacementFichier, "./fichiers_client/");
 	strcat(emplacementFichier, fileName);
 	FILE *stream = fopen(emplacementFichier, "w");
@@ -210,10 +220,12 @@ void *receptionFichier(void *ds)
 	shutdown(ds_file, 2);
 }
 
-/*
- * Vérifie si le client souhaite utiliser une des commandes
- * Paramètres : char *msg : message du client à vérifier
- * Retour : 1 (vrai) si le client utilise une commande, 0 (faux) sinon
+/**
+ * @brief Vérifie si un client souhaite utiliser une des commandes
+ * disponibles.
+ *
+ * @param msg message du client à vérifier
+ * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg)
 {
@@ -261,11 +273,15 @@ int useOfCommand(char *msg)
 		strcpy(nomFichier, tabFichier[rep]);
 
 		printf("%s\n", nomFichier);
-		pthread_t test;
 
-		pthread_create(&test, NULL, envoieFichier, 0);
+		pthread_t thread_envoieFichier;
 
-		// free(rep);
+		if (pthread_create(&thread_envoieFichier, NULL, envoieFichier, 0) < 0)
+		{
+			perror("Erreur de création de thread de récéption client\n");
+			exit(-1);
+		}
+
 		return 1;
 	}
 	else if (strcmp(msg, "/télécharger\n") == 0)
@@ -285,7 +301,7 @@ int useOfCommand(char *msg)
 		// Nommage de la socket
 		aS.sin_family = AF_INET;
 		inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
-		aS.sin_port = htons(3001);
+		aS.sin_port = htons(portServeur + 1);
 		socklen_t lgA = sizeof(struct sockaddr_in);
 
 		// Envoi d'une demande de connexion
@@ -297,8 +313,8 @@ int useOfCommand(char *msg)
 		}
 		printf("Socket connectée\n");
 
-		char *listeFichier = malloc(sizeof(char) * 200);
-		if (recv(dS_file, listeFichier, sizeof(char) * 200, 0) == -1)
+		char *listeFichier = malloc(sizeof(char) * 300);
+		if (recv(dS_file, listeFichier, sizeof(char) * 300, 0) == -1)
 		{
 			printf("** fin de la communication **\n");
 			exit(-1);
@@ -318,10 +334,10 @@ int useOfCommand(char *msg)
 		}
 		free(numFichier);
 
-		pthread_t thread_sending_file;
-		if (pthread_create(&thread_sending_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
+		pthread_t thread_receiving_file;
+		if (pthread_create(&thread_receiving_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
 		{
-			perror("Erreur de création de thread d'envoi client\n");
+			perror("Erreur de création de thread de récéption client\n");
 			exit(-1);
 		}
 
@@ -331,8 +347,8 @@ int useOfCommand(char *msg)
 	return 0;
 }
 
-/*
- * Fonction pour le thread d'envoi
+/**
+ * @brief Fonction principale pour le thread gérant l'envoi de messages.
  */
 void *sendingForThread()
 {
@@ -362,11 +378,11 @@ void *sendingForThread()
 	return NULL;
 }
 
-/*
- * Receptionne un message d'une socket et teste que tout se passe bien
- * Paramètres : int dS : la socket
- *              char * msg : message à recevoir
- *              ssize_t size : taille maximum du message à recevoir
+/**
+ * @brief Réceptionne un message du serveur et teste que tout se passe bien.
+ *
+ * @param rep buffer contenant le message reçu
+ * @param size taille maximum du message à recevoir
  */
 void receiving(char *rep, ssize_t size)
 {
@@ -377,8 +393,8 @@ void receiving(char *rep, ssize_t size)
 	}
 }
 
-/*
- * Fonction pour le thread de réception
+/**
+ * @brief Fonction principale pour le thread gérant la réception de messages.
  */
 void *receivingForThread()
 {
@@ -401,7 +417,12 @@ void *receivingForThread()
 	return NULL;
 }
 
-/* Signal Handler for SIGINT */
+/**
+ * @brief Fonction gérant l'interruption du programme par CTRL+C.
+ * Correspond à la gestion des signaux.
+ *
+ * @param sig_num numéro du signal
+ */
 void sigintHandler(int sig_num)
 {
 	printf("\nFin du programme avec Ctrl + C \n");
@@ -428,6 +449,7 @@ int main(int argc, char *argv[])
 	printf("Début programme\n");
 
 	addrServeur = argv[1];
+	portServeur = atoi(argv[2]);
 
 	// Création de la socket
 	dS = socket(PF_INET, SOCK_STREAM, 0);
