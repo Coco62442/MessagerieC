@@ -1,6 +1,7 @@
 /*
 Gestion du ctrl +c (include + main + fonction sigintHandler)
 Structure salon + variables + sem/mutex
+Include time
 Veuillez trouver le diagramme de Séquence sur ce lien :
 //www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
 */
@@ -14,7 +15,8 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <unistd.h>
 #include <signal.h>
 #include <time.h>
-
+#include <sys/stat.h>
+#include <dirent.h>
 /*
  * Définition d'une structure Client pour regrouper toutes les informations du client
  */
