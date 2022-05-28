@@ -480,8 +480,11 @@ int main(int argc, char *argv[])
 
 	// Saisie du pseudo du client au clavier
 	char *myPseudo = (char *)malloc(sizeof(char) * 12);
-	printf("Votre pseudo (maximum 11 caractères):\n");
-	fgets(myPseudo, 12, stdin);
+	do
+	{
+		printf("Votre pseudo (maximum 11 caractères):\n");
+		fgets(myPseudo, 12, stdin);
+	} while (strcmp(myPseudo, "\n") == 0);
 
 	// Envoie du pseudo
 	sending(myPseudo);
