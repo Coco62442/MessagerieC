@@ -1,0 +1,93 @@
+@startuml
+actor Client1
+control Serveur
+actor Client2
+
+group Connexion
+Client1 --> Serveur : Demande de connexion
+Serveur --> Serveur : Traitement de la connexion\n(pseudo, enregistrement)
+Serveur --> Client1 : Confirme la connexion
+end
+
+group Discussion
+Client1 --> Serveur : Envoie un message
+Serveur --> Client2 : Transmet le message aux clients du salon
+end
+
+group Utilisation de commande
+group /aide
+Client1 --> Serveur : Utilise la commande '/aide'
+Serveur --> Client1 : Envoie les informations du fichier commande.txt
+end
+
+group /mp
+Client1 --> Serveur : Utilise la commande '/mp'
+Serveur --> Serveur : Traite la commande de Client1\n(vérifie les erreurs d'utilisations)
+Serveur --> Client2 : Transmet le message de Client1 au client souhaité
+end
+
+group /estConnecte
+Client1 --> Serveur : Utilise la commande '/estConnecte'
+Serveur --> Client1 : Retourne la réponse de la requête\n(si l'utilisateur est connecté ou non)
+end
+
+group /enLigne
+Client1 --> Serveur : Utilise la commande '/enLigne'
+Serveur --> Client1 : Retourne la liste des utilisateurs connectés
+end
+
+group /fin
+Client1 --> Serveur : Utilisation de la commande '/fin'
+Serveur --> Client1 : Déconnecte l'utilisateur du serveur
+Client1 --> Client1 : Termine le programme proprement
+end
+
+group Fichier
+group /déposer
+Client1 --> Serveur : Utilise la commande '/déposer'
+Serveur --> Client1 : Demande le nom et la taille du fichier
+Client1 --> Serveur : Retourne les informations demandées
+Serveur --> Serveur : Créér un fichier
+Serveur --> Client1 : Requête des données du fichier
+Client1 --> Client1 : Lecture des données du fichier
+Client1 --> Serveur : Envoie des données du fichier
+Serveur --> Serveur : Récupère et écrit les données dans le fichier
+end
+
+group /télécharger
+Client1 --> Serveur : Utilise la commande '/télécharger'
+Serveur --> Client1 : Requête du fichier souhaité
+Client1 --> Serveur : Envoie du nom du fichier souhaité
+Serveur --> Client1 : Envoie du nom et de la taille du fichier
+Client1 --> Client1 : Prépare un fichier avec le nom
+Client1 --> Serveur : Requête des données du fichier
+Serveur --> Serveur : Lecture des données du fichier
+Serveur --> Client1 : Envoie des données du fichier
+Client1 --> Client1 : Réception et écriture des informations reçues
+end
+
+group Salon
+group /créer
+Client1 --> Serveur : Utilisation de la commande '/créer'
+Serveur --> Serveur : Traitement de la création\n(Nom du salon, le nombre de places, la description)
+Serveur --> Client1 : Confirmation de la création
+end
+
+group /liste
+Client1 --> Serveur : Utilisation de la commande '/liste'
+Serveur --> Client1 : Retourne la liste des salons actifs
+end
+
+group /suppression
+Client1 --> Serveur : Utilisation de la commande '/suppression'
+Serveur --> Serveur : Traitement de la suppression du salon
+Serveur --> Client1 : Confirmation de la suppression du salon
+end
+
+group Unknown
+Client1 --> Serveur : Utilisation d'un commande inconnue
+Serveur --> Client1 : Envoie un message informatif sur le '/aide'
+end
+
+end
+@enduml

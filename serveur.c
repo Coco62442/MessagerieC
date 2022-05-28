@@ -749,6 +749,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			// TODO: ecrire dans un fichier les infos du salon
 			free(nomSalon);
 			free(description);
+			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
 		return 1;
 	}
