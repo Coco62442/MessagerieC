@@ -19,6 +19,8 @@
 
 // #######  	CHANGEMENTS NIV2 (salon)  	##############
 // ajout de la fct giveNumSalon()
+// ajout des commandes /liste (donne la liste des salons) /créer (creer un salon de la fomre '/créer NomDuSalon NombresDePlacesMax Description du salon')
+// ajout du mutex lorsqu'on touche au tableau de salon
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -69,12 +71,14 @@ struct Salon
  * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
+ * - tabSalon = tableau répertoriant les salons existants
  * - nbClients = nombre de clients actuellement connectés
  * - dS_file = socket de connexion pour le transfert de fichiers
  * - dS = socket de connexion entre les clients et le serveur
  * - semaphore = sémaphore pour gérer le nombre de clients
  * - semaphoreThread = sémpahore pour gérer les threads
  * - mutex = mutex pour la modification de tabClient[]
+ * - mutexSalon = mutex pour lla modification de tabSalon[]
  */
 
 #define MAX_CLIENT 3
@@ -89,6 +93,7 @@ int portServeur;
 sem_t semaphore;
 sem_t semaphoreThread;
 pthread_mutex_t mutex;
+pthread_mutex_t mutexSalon;
 
 /**
  * @brief Fonctions pour gérer les indices du tableaux de clients.
@@ -164,7 +169,7 @@ void sending(int dS, char *msg, int id)
 	for (int i = 0; i < MAX_CLIENT; i++)
 	{
 		// On n'envoie pas au client qui a écrit le message
-		if (tabClient[i].isOccupied && dS != tabClient[i].dSC && id == tabClient[i].idSalon)
+		if (tabClient[i].isOccupied && dS != tabClient[i].dSC && id == tabClient[i].idSalon && strcmp(tabClient[i].pseudo, " ") != 0)
 		{
 			if (send(tabClient[i].dSC, msg, strlen(msg) + 1, 0) == -1)
 			{
@@ -717,7 +722,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/créer") == 0)
 	{
-		// TODO: mettre un mutex
+		pthread_mutex_lock(&mutexSalon);
 		int numSalon = giveNumSalon();
 		if (numSalon == -1)
 		{
@@ -740,8 +745,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 			tabSalon[numSalon].nbPlace = nbPlaces;
 			tabSalon[numSalon].description = description;
 			tabSalon[numSalon].isOccupiedSalon = 1;
-			// TODO : relacher le mutex
+			pthread_mutex_unlock(&mutexSalon);
 			// TODO: ecrire dans un fichier les infos du salon
+			free(nomSalon);
+			free(description);
 		}
 		return 1;
 	}
@@ -749,11 +756,13 @@ int useOfCommand(char *msg, char *pseudoSender)
 	{
 		for (int i = 0; i < MAX_SALON; i++)
 		{
+			char j[MAX_SALON];
 			if (tabSalon[i].isOccupiedSalon)
 			{
+				sprintf(j, "%d", i);
 				char *rep = malloc(sizeof(char) * 300);
-				strcpy(rep, "------------------------\n");
-				strcat(rep, i + '0');
+				strcpy(rep, "-------------------------------------\n");
+				strcat(rep, j);
 				strcat(rep, ": ");
 				strcat(rep, "Nom: ");
 				strcat(rep, tabSalon[i].nom);
@@ -765,9 +774,36 @@ int useOfCommand(char *msg, char *pseudoSender)
 				free(rep);
 			}
 		}
+		sendingDM(pseudoSender, "-------------------------------------\n");
 		return 1;
 	}
+	else if (strcmp(strToken, "/suppression") == 0)
+	{
+		char *nomSalon = malloc(sizeof(char) * 30);
+		nomSalon = strtok(NULL, " ");
 
+		int i = 0;
+		while (i < MAX_SALON)
+		{
+			if (tabSalon[i].isOccupiedSalon && strcmp(tabSalon[i].nom, nomSalon) == 0)
+			{
+				break;
+			}
+		}
+		if (i == MAX_SALON)
+		{
+			sendingDM(pseudoSender, "Le nom du salon n'existe pas\n");
+		}
+		else
+		{
+			free(tabSalon[i].nom);
+			free(tabSalon[i].description);
+			tabSalon[i].isOccupiedSalon = 0;
+			sendingDM(pseudoSender, "Le salon a été supprimé\n");
+		}
+
+		return 1;
+	}
 	else if (strToken[0] == '/')
 	{
 		sendingDM(pseudoSender, "Faites \"/aide\" pour avoir accès aux commandes disponibles et leur fonctionnement\n");
@@ -785,8 +821,43 @@ int useOfCommand(char *msg, char *pseudoSender)
  */
 void *communication(void *clientParam)
 {
-	int isEnd = 0;
 	int numClient = (long)clientParam;
+
+	// Réception du pseudo
+	char *pseudo = (char *)malloc(sizeof(char) * 100);
+	receiving(tabClient[numClient].dSC, pseudo, sizeof(char) * 12);
+	pseudo = strtok(pseudo, "\n");
+
+	while (verifPseudo(pseudo))
+	{
+		send(tabClient[numClient].dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
+		receiving(tabClient[numClient].dSC, pseudo, sizeof(char) * 12);
+		pseudo = strtok(pseudo, "\n");
+	}
+	
+	tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
+	strcpy(tabClient[numClient].pseudo, pseudo);
+	tabClient[numClient].idSalon = 0;
+
+	// On envoie un message pour dire au client qu'il est bien connecté
+	char *repServ = (char *)malloc(sizeof(char) * 100);
+	repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
+	sendingDM(pseudo, repServ);
+	// On vérifie que ce n'est pas le pseudo par défaut
+	if (strcmp(pseudo, "FinClient") != 0)
+	{
+		// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
+		strcat(pseudo, " a rejoint la communication\n");
+		sending(tabClient[numClient].dSC, pseudo, 0);
+	}
+
+	// On a un client en plus sur le serveur, on incrémente
+	pthread_mutex_lock(&mutex);
+	nbClient += 1;
+	pthread_mutex_unlock(&mutex);
+	printf("Clients connectés : %ld\n", nbClient);
+
+	int isEnd = 0;
 	char *pseudoSender = tabClient[numClient].pseudo;
 
 	while (!isEnd)
@@ -961,7 +1032,6 @@ int main(int argc, char *argv[])
 
 	while (1)
 	{
-		int dSC;
 		// Vérifions si on peut accepter un client
 		// On attends la disponibilité du sémaphore
 		sem_wait(&semaphore);
@@ -969,7 +1039,7 @@ int main(int argc, char *argv[])
 		// Acceptons une connexion
 		struct sockaddr_in aC;
 		socklen_t lg = sizeof(struct sockaddr_in);
-		dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+		int dSC = accept(dS, (struct sockaddr *)&aC, &lg);
 		if (dSC < 0)
 		{
 			perror("Problème lors de l'acceptation du client\n");
@@ -977,51 +1047,19 @@ int main(int argc, char *argv[])
 		}
 		printf("Client %ld connecté\n", nbClient);
 
-		// Réception du pseudo
-		char *pseudo = (char *)malloc(sizeof(char) * 100);
-		receiving(dSC, pseudo, sizeof(char) * 12);
-		pseudo = strtok(pseudo, "\n");
-
-		while (verifPseudo(pseudo))
-		{
-			send(dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
-			receiving(dSC, pseudo, sizeof(char) * 12);
-			pseudo = strtok(pseudo, "\n");
-		}
-
 		// Enregistrement du client
 		pthread_mutex_lock(&mutex);
 		long numClient = giveNumClient();
 		tabClient[numClient].isOccupied = 1;
 		tabClient[numClient].dSC = dSC;
-		tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
-		strcpy(tabClient[numClient].pseudo, pseudo);
-		tabClient[numClient].idSalon = 0;
+		tabClient[numClient].pseudo = " ";
 		pthread_mutex_unlock(&mutex);
 
-		// On envoie un message pour dire au client qu'il est bien connecté
-		char *repServ = (char *)malloc(sizeof(char) * 100);
-		repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
-		sendingDM(pseudo, repServ);
-		// On vérifie que ce n'est pas le pseudo par défaut
-		if (strcmp(pseudo, "FinClient") != 0)
-		{
-			// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-			strcat(pseudo, " a rejoint la communication\n");
-			sending(dSC, pseudo, 0);
-		}
-		free(pseudo);
 		//_____________________ Communication _____________________
 		if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
 		{
 			perror("Erreur thread create");
 		}
-
-		// On a un client en plus sur le serveur, on incrémente
-		pthread_mutex_lock(&mutex);
-		nbClient += 1;
-		pthread_mutex_unlock(&mutex);
-		printf("Clients connectés : %ld\n", nbClient);
 	}
 	// ############  	N'arrive jamais  	####################
 	shutdown(dS, 2);
