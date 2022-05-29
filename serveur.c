@@ -780,8 +780,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/suppression") == 0)
 	{
-		char *nomSalon = malloc(sizeof(char) * 30);
-		nomSalon = strtok(NULL, " ");
+		char *nomSalon = strtok(NULL, " ");
+		nomSalon = strtok(nomSalon, "\n");
 
 		if (nomSalon == NULL)
 		{
@@ -796,6 +796,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			{
 				break;
 			}
+			i++;
 		}
 		if (i == MAX_SALON)
 		{
@@ -812,8 +813,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 				}
 			}
 
-			free(tabSalon[i].nom);
-			free(tabSalon[i].description);
 			tabSalon[i].isOccupiedSalon = 0;
 			sendingDM(pseudoSender, "Le salon a été supprimé\n");
 		}
