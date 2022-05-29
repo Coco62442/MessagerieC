@@ -730,11 +730,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		else
 		{
-			char *nomSalon = malloc(sizeof(char) * 30);
-			nomSalon = strtok(NULL, " ");
+			char *nomSalon = strtok(NULL, " ");
 			int nbPlaces = atoi(strtok(NULL, " "));
-			char *description = malloc(sizeof(char) * 200);
-			description = strtok(NULL, "");
+			char *description = strtok(NULL, "");
 
 			// TODO: verifier les infos (nbPlace bien un int)
 			printf("nom : %s\n", nomSalon);
@@ -746,9 +744,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 			tabSalon[numSalon].description = description;
 			tabSalon[numSalon].isOccupiedSalon = 1;
 			pthread_mutex_unlock(&mutexSalon);
+			printf("coucou\n");
 			// TODO: ecrire dans un fichier les infos du salon
-			free(nomSalon);
-			free(description);
+			printf("coucou\n");
+			printf("coucou\n");
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
 		return 1;
