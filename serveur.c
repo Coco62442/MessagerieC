@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <signal.h>
+#include <time.h>
 
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
@@ -744,10 +745,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			tabSalon[numSalon].description = description;
 			tabSalon[numSalon].isOccupiedSalon = 1;
 			pthread_mutex_unlock(&mutexSalon);
-			printf("coucou\n");
 			// TODO: ecrire dans un fichier les infos du salon
-			printf("coucou\n");
-			printf("coucou\n");
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
 		return 1;
@@ -757,6 +755,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 		for (int i = 0; i < MAX_SALON; i++)
 		{
 			char j[MAX_SALON];
+			printf(" i = %d\n", i);
+			printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
 			if (tabSalon[i].isOccupiedSalon)
 			{
 				sprintf(j, "%d", i);
@@ -772,6 +772,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 				strcat(rep, "\n\n");
 				sendingDM(pseudoSender, rep);
 				free(rep);
+				sleep(0.3);
 			}
 		}
 		sendingDM(pseudoSender, "-------------------------------------\n");
