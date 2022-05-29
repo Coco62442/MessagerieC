@@ -723,6 +723,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/créer") == 0)
 	{
+		strToken = strtok(strToken, "\n");
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = giveNumSalon();
 		if (numSalon == -1)
@@ -732,10 +733,40 @@ int useOfCommand(char *msg, char *pseudoSender)
 		else
 		{
 			char *nomSalon = strtok(NULL, " ");
+
+			printf("nomSalon: %s\n", nomSalon);
+			// Vérification des paramètres de la commane
+			if (nomSalon == NULL)
+			{
+				pthread_mutex_unlock(&mutexSalon);
+				sendingDM(pseudoSender, "L'utilisation de la commande \"/suppression\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
+				return 1;
+			}
+
 			int nbPlaces = atoi(strtok(NULL, " "));
+
+			printf("nbPlace: %d\n", nbPlaces);
+
+			// Vérification des paramètres de la commane
+			if (nbPlaces < 1)
+			{
+				pthread_mutex_unlock(&mutexSalon);
+				sendingDM(pseudoSender, "L'utilisation de la commande \"/suppression\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
+				return 1;
+			}
+
 			char *description = strtok(NULL, "");
 
-			// TODO: verifier les infos (nbPlace bien un int)
+			printf("description: %s\n", description);
+
+			// Vérification des paramètres de la commane
+			if (description == NULL)
+			{
+				pthread_mutex_unlock(&mutexSalon);
+				sendingDM(pseudoSender, "L'utilisation de la commande \"/suppression\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
+				return 1;
+			}
+
 			printf("nom : %s\n", nomSalon);
 			printf("nbPlaces : %d\n", nbPlaces);
 			printf("%s\n", description);
@@ -788,7 +819,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			sendingDM(pseudoSender, "Vous devez rajouter le nom du salon après /suppression\n\"/aide\" pour obtenir plus d'informations\n");
 			return 1;
 		}
-		
+
 		int i = 0;
 		while (i < MAX_SALON)
 		{
