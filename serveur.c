@@ -83,7 +83,7 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
-#define MAX_SALON 5
+#define MAX_SALON 2
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 Salon tabSalon[MAX_SALON];
@@ -755,10 +755,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 		for (int i = 0; i < MAX_SALON; i++)
 		{
 			char j[MAX_SALON];
-			printf(" i = %d\n", i);
-			printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
 			if (tabSalon[i].isOccupiedSalon)
 			{
+				printf(" i = %d\n", i);
+				printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
 				sprintf(j, "%d", i);
 				char *rep = malloc(sizeof(char) * 300);
 				strcpy(rep, "-------------------------------------\n");
@@ -771,8 +771,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 				strcat(rep, tabSalon[i].description);
 				strcat(rep, "\n\n");
 				sendingDM(pseudoSender, rep);
-				free(rep);
 				sleep(0.3);
+				free(rep);
 			}
 		}
 		sendingDM(pseudoSender, "-------------------------------------\n");
@@ -783,6 +783,12 @@ int useOfCommand(char *msg, char *pseudoSender)
 		char *nomSalon = malloc(sizeof(char) * 30);
 		nomSalon = strtok(NULL, " ");
 
+		if (nomSalon == NULL)
+		{
+			sendingDM(pseudoSender, "Vous devez rajouter le nom du salon après /suppression\n\"/aide\" pour obtenir plus d'informations\n");
+			return 1;
+		}
+		
 		int i = 0;
 		while (i < MAX_SALON)
 		{
@@ -797,6 +803,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		else
 		{
+			for (int j = 0; j < MAX_CLIENT; j++)
+			{
+				if (tabClient[j].isOccupied && tabClient[j].idSalon == tabSalon[i].idSalon)
+				{
+					tabClient[j].idSalon = 0;
+					sendingDM(tabClient[j].pseudo, "Vous avez été envoyé sur le salon générale\n");
+				}
+			}
+
 			free(tabSalon[i].nom);
 			free(tabSalon[i].description);
 			tabSalon[i].isOccupiedSalon = 0;
@@ -835,7 +850,7 @@ void *communication(void *clientParam)
 		receiving(tabClient[numClient].dSC, pseudo, sizeof(char) * 12);
 		pseudo = strtok(pseudo, "\n");
 	}
-	
+
 	tabClient[numClient].pseudo = (char *)malloc(sizeof(char) * 12);
 	strcpy(tabClient[numClient].pseudo, pseudo);
 	tabClient[numClient].idSalon = 0;
