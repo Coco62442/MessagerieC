@@ -1,3 +1,10 @@
+// #######  	CHANGEMENTS  	##############
+// les threads sont instancies en global
+// si receiving recoit le code de deconnexion serveur receiving s arrete et kill thread sending pr termine le client
+// ajout de la variable portServeur
+// envoieFichier comme pr le serveur retouchée
+// changements ds useOfCommands
+
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -26,7 +33,12 @@ int isEnd = 0;
 int dS = -1;
 int boolConnect = 0;
 char *addrServeur;
+int portServeur;
 struct sockaddr_in aS;
+
+// Création des threads
+pthread_t thread_sending;
+pthread_t thread_receiving;
 
 /**
  * @brief Vérifie si un client souhaite quitter la communication.
@@ -64,8 +76,32 @@ void *envoieFichier()
 {
     char *fileName = nomFichier;
 
+    // Création de la socket
+    int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+
+    if (dS_file == -1)
+    {
+        perror("Problème de création de socket client\n");
+        exit(-1);
+    }
+
+    // Nommage de la socket
+    aS.sin_family = AF_INET;
+    inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
+    aS.sin_port = htons(portServeur + 1);
+    socklen_t lgA = sizeof(struct sockaddr_in);
+
+    // Envoi d'une demande de connexion
+    printf("Connection en cours...\n");
+    if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
+    {
+        perror("Problème de connexion au serveur\n");
+        exit(-1);
+    }
+    printf("Socket connectée\n");
+
     // DEBUT ENVOI FICHIER
-    char *path = malloc(sizeof(char) * 50);
+    char *path = malloc(sizeof(char) * 40);
     strcpy(path, "fichiers_client/");
     strcat(path, fileName);
 
@@ -81,34 +117,10 @@ void *envoieFichier()
     fseek(stream, 0, SEEK_SET);
 
     // Lecture et stockage pour envoi du fichier
-    char *toutFichier = malloc(length);
-    fread(toutFichier, sizeof(char) * length, 1, stream);
+    char *toutFichier = malloc(sizeof(char) * length);
+    int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
     free(path);
     fclose(stream);
-
-    // Création de la socket
-    int dS_file = socket(PF_INET, SOCK_STREAM, 0);
-
-    if (dS_file == -1)
-    {
-        perror("Problème de création de socket client\n");
-        exit(-1);
-    }
-
-    // Nommage de la socket
-    aS.sin_family = AF_INET;
-    inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
-    aS.sin_port = htons(3001);
-    socklen_t lgA = sizeof(struct sockaddr_in);
-
-    // Envoi d'une demande de connexion
-    printf("Connection en cours...\n");
-    if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
-    {
-        perror("Problème de connexion au serveur\n");
-        exit(-1);
-    }
-    printf("Socket connectée\n");
 
     if (send(dS_file, &length, sizeof(int), 0) == -1)
     {
@@ -120,7 +132,7 @@ void *envoieFichier()
         perror("Erreur au send");
         exit(-1);
     }
-    if (send(dS_file, toutFichier, sizeof(char) * length, 0) == -1)
+    if (send(dS_file, toutFichier, sizeof(char) * tailleFichier, 0) == -1)
     {
         perror("Erreur au send");
         exit(-1);
@@ -139,18 +151,18 @@ void *receptionFichier(void *ds)
     int returnCode;
     int index;
 
-    char *fileName = malloc(sizeof(char) * 20);
+    char *fileName = malloc(sizeof(char) * 100);
     int tailleFichier;
 
     if (recv(ds_file, &tailleFichier, sizeof(int), 0) == -1)
     {
-        printf("** fin de la communication **\n");
+        perror("Erreur au recv de fichier\n** fin de la communication **\n");
         exit(-1);
     }
 
-    if (recv(ds_file, fileName, sizeof(char) * 20, 0) == -1)
+    if (recv(ds_file, fileName, sizeof(char) * 100, 0) == -1)
     {
-        printf("** fin de la communication **\n");
+        printf("Erreur au recv de fichier\n** fin de la communication **\n");
         exit(-1);
     }
 
@@ -158,11 +170,13 @@ void *receptionFichier(void *ds)
 
     if (recv(ds_file, buffer, sizeof(char) * tailleFichier, 0) == -1)
     {
-        printf("** fin de la communication **\n");
+        printf("Erreur au recv de fichier\n** fin de la communication **\n");
         exit(-1);
     }
+    printf("%s\n", buffer);
+    printf("Taille fichier = %d\n", tailleFichier);
 
-    char *emplacementFichier = malloc(sizeof(char) * 200);
+    char *emplacementFichier = malloc(sizeof(char) * 120);
     strcpy(emplacementFichier, "./fichiers_client/");
     strcat(emplacementFichier, fileName);
     FILE *stream = fopen(emplacementFichier, "w");
@@ -172,7 +186,7 @@ void *receptionFichier(void *ds)
         exit(EXIT_FAILURE);
     }
 
-    if (1 != fwrite(buffer, sizeof(char) * tailleFichier, 1, stream))
+    if (tailleFichier != fwrite(buffer, sizeof(char), tailleFichier, stream))
     {
         fprintf(stderr, "Cannot write block in file\n");
         exit(EXIT_FAILURE);
@@ -199,7 +213,9 @@ void *receptionFichier(void *ds)
     }
 
     free(fileName);
+    sleep(0.2);
     free(buffer);
+    sleep(0.2);
     free(emplacementFichier);
     shutdown(ds_file, 2);
 }
@@ -242,18 +258,30 @@ int useOfCommand(char *msg)
 
         closedir(folder);
 
-        char *rep = malloc(sizeof(char) * 2);
-        fgets(rep, 2, stdin);
-        printf("Fichier voulu %s\n", rep);
-        printf("%s\n", tabFichier[atoi(rep)]);
-        strcpy(nomFichier, tabFichier[atoi(rep)]);
+        int rep;
+        scanf("%d", &rep);
+        printf("Fichier voulu %d\n", rep);
+        while (rep < 0 || rep >= files)
+        {
+            printf("REP1 :%d\n", rep);
+            printf("Veuillez entrer un numéro valide\n");
+            scanf("%d", &rep);
+            printf("REP2 :%d\n", rep);
+        }
+
+        printf("%s\n", tabFichier[rep]);
+        strcpy(nomFichier, tabFichier[rep]);
 
         printf("%s\n", nomFichier);
-        pthread_t test;
 
-        pthread_create(&test, NULL, envoieFichier, 0);
+        pthread_t thread_envoieFichier;
 
-        free(rep);
+        if (pthread_create(&thread_envoieFichier, NULL, envoieFichier, 0) < 0)
+        {
+            perror("Erreur de création de thread de récéption client\n");
+            exit(-1);
+        }
+
         return 1;
     }
     else if (strcmp(msg, "/télécharger\n") == 0)
@@ -273,7 +301,7 @@ int useOfCommand(char *msg)
         // Nommage de la socket
         aS.sin_family = AF_INET;
         inet_pton(AF_INET, addrServeur, &(aS.sin_addr));
-        aS.sin_port = htons(3001);
+        aS.sin_port = htons(portServeur + 1);
         socklen_t lgA = sizeof(struct sockaddr_in);
 
         // Envoi d'une demande de connexion
@@ -285,8 +313,8 @@ int useOfCommand(char *msg)
         }
         printf("Socket connectée\n");
 
-        char *listeFichier = malloc(sizeof(char) * 200);
-        if (recv(dS_file, listeFichier, sizeof(char) * 200, 0) == -1)
+        char *listeFichier = malloc(sizeof(char) * 300);
+        if (recv(dS_file, listeFichier, sizeof(char) * 300, 0) == -1)
         {
             printf("** fin de la communication **\n");
             exit(-1);
@@ -306,10 +334,10 @@ int useOfCommand(char *msg)
         }
         free(numFichier);
 
-        pthread_t thread_sending_file;
-        if (pthread_create(&thread_sending_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
+        pthread_t thread_receiving_file;
+        if (pthread_create(&thread_receiving_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
         {
-            perror("Erreur de création de thread d'envoi client\n");
+            perror("Erreur de création de thread de récéption client\n");
             exit(-1);
         }
 
@@ -374,11 +402,18 @@ void *receivingForThread()
     {
         char *r = (char *)malloc(sizeof(char) * 100);
         receiving(r, sizeof(char) * 100);
+        if (strcmp(r, "Tout ce message est le code secret pour désactiver les clients") == 0)
+        {
+            free(r);
+            break;
+        }
+
         // strcpy(r, strcat(r, "\n4 > "));
         printf("%s", r);
         free(r);
     }
     shutdown(dS, 2);
+    pthread_cancel(thread_sending);
     return NULL;
 }
 
@@ -402,9 +437,6 @@ void sigintHandler(int sig_num)
     exit(1);
 }
 
-/*
- * _____________________ MAIN _____________________
- */
 // argv[1] = adresse ip
 // argv[2] = port
 int main(int argc, char *argv[])
@@ -416,6 +448,9 @@ int main(int argc, char *argv[])
     }
     printf("Début programme\n");
 
+    addrServeur = argv[1];
+    portServeur = atoi(argv[2]);
+
     // Création de la socket
     dS = socket(PF_INET, SOCK_STREAM, 0);
     if (dS == -1)
@@ -425,18 +460,14 @@ int main(int argc, char *argv[])
     }
     printf("Socket Créé\n");
 
-    // On stocke l'adresse pour le transfert de fichiers
-    addrServeur = argv[1];
-
     // Nommage de la socket
-    struct sockaddr_in aS;
     aS.sin_family = AF_INET;
     inet_pton(AF_INET, argv[1], &(aS.sin_addr));
     aS.sin_port = htons(atoi(argv[2]));
     socklen_t lgA = sizeof(struct sockaddr_in);
 
     // Envoi d'une demande de connexion
-    printf("Connection en cours...\n");
+    printf("Connexion en cours...\n");
     if (connect(dS, (struct sockaddr *)&aS, lgA) < 0)
     {
         perror("Problème de connexion au serveur\n");
@@ -449,8 +480,11 @@ int main(int argc, char *argv[])
 
     // Saisie du pseudo du client au clavier
     char *myPseudo = (char *)malloc(sizeof(char) * 12);
-    printf("Votre pseudo (maximum 11 caractères):\n");
-    fgets(myPseudo, 12, stdin);
+    do
+    {
+        printf("Votre pseudo (maximum 11 caractères):\n");
+        fgets(myPseudo, 12, stdin);
+    } while (strcmp(myPseudo, "\n") == 0);
 
     // Envoie du pseudo
     sending(myPseudo);
@@ -474,15 +508,12 @@ int main(int argc, char *argv[])
         printf("%s\n", repServeur);
     }
     free(myPseudo);
-    printf("Connection complète\n");
+    printf("Connexion complète\n");
     boolConnect = 1;
 
     //_____________________ Communication _____________________
-    // Création des threads
-    pthread_t thread_sendind;
-    pthread_t thread_receiving;
 
-    if (pthread_create(&thread_sendind, NULL, sendingForThread, 0) < 0)
+    if (pthread_create(&thread_sending, NULL, sendingForThread, 0) < 0)
     {
         perror("Erreur de création de thread d'envoi client\n");
         exit(-1);
@@ -494,8 +525,10 @@ int main(int argc, char *argv[])
         exit(-1);
     }
 
-    pthread_join(thread_sendind, NULL);
+    pthread_join(thread_sending, NULL);
     pthread_join(thread_receiving, NULL);
 
     printf("Fin du programme\n");
+
+    return 1;
 }
