@@ -1134,7 +1134,7 @@ int main(int argc, char *argv[])
 	tabSalon[0].idSalon = 0;
 	tabSalon[0].isOccupiedSalon = 1;
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
-	tabSalon[0].nom = "Chat générale";
+	tabSalon[0].nom = "Chat_générale";
 	tabSalon[0].description = "Salon général par défaut";
 	tabSalon[0].nbPlace = MAX_CLIENT;
 
