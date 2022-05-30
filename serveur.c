@@ -887,7 +887,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
 		}
-		else if (numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		else if (salonExiste(numSalon) && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		{
 			tabClient[i].idSalon = numSalon;
 		}
