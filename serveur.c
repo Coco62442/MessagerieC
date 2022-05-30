@@ -6,7 +6,7 @@ CHANGER /SALON
 CREER CREER SALON, MODIFIER ET SUPPRIMER
 Gestion du ctrl +c (include + main + fonction sigintHandler)
 Structure salon + variables + sem/mutex
-Include time
+Include time, ctype.h
 Veuillez trouver le diagramme de Séquence sur ce lien :
 //www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
 */
@@ -22,6 +22,7 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <time.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <ctype.h>
 
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
@@ -163,8 +164,6 @@ void afficheSalon(char *pseudoSender)
     for (int i = 0; i < MAX_SALON; i++)
     {
         char j[MAX_SALON];
-        printf(" i = %d\n", i);
-        printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
         if (tabSalon[i].isOccupiedSalon)
         {
             sprintf(j, "%d", i);
@@ -216,7 +215,6 @@ int salonAcceptNewUser(int numSalon)
     int nbPlace = 0;
     for (int i = 0; i < MAX_CLIENT; i++)
 	{
-		// On n'envoie pas au client qui a écrit le message
 		if (tabClient[i].isOccupied && tabClient[i].idSalon == numSalon)
 		{
 			nbPlace++;
@@ -823,30 +821,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
 	{
-		for (int i = 0; i < MAX_SALON; i++)
-		{
-			char j[MAX_SALON];
-			printf(" i = %d\n", i);
-			printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
-			if (tabSalon[i].isOccupiedSalon)
-			{
-				sprintf(j, "%d", i);
-				char *rep = malloc(sizeof(char) * 300);
-				strcpy(rep, "-------------------------------------\n");
-				strcat(rep, j);
-				strcat(rep, ": ");
-				strcat(rep, "Nom: ");
-				strcat(rep, tabSalon[i].nom);
-				strcat(rep, "\n");
-				strcat(rep, "Description: ");
-				strcat(rep, tabSalon[i].description);
-				strcat(rep, "\n\n");
-				sendingDM(pseudoSender, rep);
-				sleep(0.3);
-				free(rep);
-			}
-		}
-		sendingDM(pseudoSender, "-------------------------------------\n");
+		afficheSalon(pseudoSender);
 		return 1;
 	}
 	else if (strcmp(strToken, "/suppression") == 0)
@@ -878,8 +853,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
     else if (strcmp(strToken, "/connexionSalon\n") == 0)
     {
-		int numSalon; // num salon
+        char *numSalonChar = malloc(sizeof(char) * MAX_SALON); 
+		int numSalon;
         int i = 0;
+        
         while (i < MAX_CLIENT)
         {
             if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -893,35 +870,31 @@ int useOfCommand(char *msg, char *pseudoSender)
             perror("Pseudo pas trouvé");
             exit(-1);
         }
+
         afficheSalon(pseudoSender);
         sleep(0.2);
 		sendingDM(pseudoSender, "Rentrez le numéro de salon souhaité. Si vous souhaitez annuler, tapez -1\n");
+
+        receiving(tabClient[i].dSC, numSalonChar, sizeof(char)*MAX_SALON+1);
         
-		if (recv(tabClient[i].dSC, &numSalon, sizeof(int), 0) == -1)
-        {
-            perror("Erreur au recv");
-            exit(-1);
-        }
-        printf("prems %d", numSalon);
-        while((numSalon == -1) || !salonExiste((int)numSalon)){
-            sendingDM(pseudoSender, "id de salon incorrect, veuillez en rentrer un autre. Si vous souhaitez annuler, tapez -1\n");
-            if (recv(tabClient[i].dSC, &numSalon, sizeof(int), 0) == -1)
-            {
-                perror("Erreur au recv");
-                exit(-1);
-            }
-            sleep(0.1);
-            sendingDM(pseudoSender, numSalon);
-            printf("while %d", numSalon);
-        }
-        if(numSalon == -1){
-            sendingDM(pseudoSender, "Annulation du changement de salon.");
-        }
-        else if(salonAcceptNewUser(numSalon)){
-            tabClient[i].idSalon = numSalon;
+        if(strcmp(numSalonChar,"-1\n")==0){
+            numSalon = -1;
         } else {
-            sendingDM(pseudoSender, "Ce salon comporte trop de membres, veuillez réessayer plus tard.");
+            numSalon = atoi(numSalonChar);
         }
+		
+		if (numSalon == -1)
+		{
+			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
+		}
+		else if (numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		{
+			tabClient[i].idSalon = numSalon;
+		}
+		else
+		{
+			sendingDM(pseudoSender, "Ce salon comporte trop de membres ou n'existe pas, veuillez réessayer plus tard.\n");
+		}
         
         return 1;
     }
@@ -1087,6 +1060,7 @@ int main(int argc, char *argv[])
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
 	tabSalon[0].nom = "Chat générale";
 	tabSalon[0].description = "Salon général par défaut";
+	tabSalon[0].nbPlace = MAX_CLIENT;
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
