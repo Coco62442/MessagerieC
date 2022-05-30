@@ -480,30 +480,28 @@ void *envoieFichierThread(void *clientIndex)
  */
 void afficheSalon(char *pseudoSender)
 {
-    for (int i = 0; i < MAX_SALON; i++)
-    {
-        char j[MAX_SALON];
-        printf(" i = %d\n", i);
-        printf("isOccupied = %d\n", tabSalon[i].isOccupiedSalon);
-        if (tabSalon[i].isOccupiedSalon)
-        {
-            sprintf(j, "%d", i);
-            char *rep = malloc(sizeof(char) * 300);
-            strcpy(rep, "-------------------------------------\n");
-            strcat(rep, j);
-            strcat(rep, ": ");
-            strcat(rep, "Nom: ");
-            strcat(rep, tabSalon[i].nom);
-            strcat(rep, "\n");
-            strcat(rep, "Description: ");
-            strcat(rep, tabSalon[i].description);
-            strcat(rep, "\n\n");
-            sendingDM(pseudoSender, rep);
-            sleep(0.3);
-            free(rep);
-        }
-    }
-    sendingDM(pseudoSender, "-------------------------------------\n");
+	for (int i = 0; i < MAX_SALON; i++)
+	{
+		char j[MAX_SALON];
+		if (tabSalon[i].isOccupiedSalon)
+		{
+			sprintf(j, "%d", i);
+			char *rep = malloc(sizeof(char) * 300);
+			strcpy(rep, "-------------------------------------\n");
+			strcat(rep, j);
+			strcat(rep, ": ");
+			strcat(rep, "Nom: ");
+			strcat(rep, tabSalon[i].nom);
+			strcat(rep, "\n");
+			strcat(rep, "Description: ");
+			strcat(rep, tabSalon[i].description);
+			strcat(rep, "\n\n");
+			sendingDM(pseudoSender, rep);
+			sleep(0.3);
+			free(rep);
+		}
+	}
+	sendingDM(pseudoSender, "-------------------------------------\n");
 }
 
 /**
@@ -516,8 +514,8 @@ void afficheSalon(char *pseudoSender)
  */
 int salonAcceptNewUser(int numSalon)
 {
-    int nbPlace = 0;
-    for (int i = 0; i < MAX_CLIENT; i++)
+	int nbPlace = 0;
+	for (int i = 0; i < MAX_CLIENT; i++)
 	{
 		// On n'envoie pas au client qui a écrit le message
 		if (tabClient[i].isOccupied && tabClient[i].idSalon == numSalon)
@@ -525,11 +523,14 @@ int salonAcceptNewUser(int numSalon)
 			nbPlace++;
 		}
 	}
-    if(nbPlace<tabSalon[numSalon].nbPlace){
-        return 1;
-    } else {
-        return 0;
-    }
+	if (nbPlace < tabSalon[numSalon].nbPlace)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 /**
@@ -912,7 +913,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/connexionSalon\n") == 0)
 	{
-		char *numSalonChar = malloc(sizeof(char) * MAX_SALON); 
+		char *numSalonChar = malloc(sizeof(char) * MAX_SALON);
 		int numSalon; // num salon
 		int i = 0;
 		while (i < MAX_CLIENT)
@@ -932,28 +933,50 @@ int useOfCommand(char *msg, char *pseudoSender)
 		sleep(0.2);
 		sendingDM(pseudoSender, "Rentrez le numéro de salon souhaité. Si vous souhaitez annuler, tapez -1\n");
 
-		if (recv(tabClient[i].dSC, numSalonChar, sizeof(char), 0) == -1)
+		receiving(tabClient[i].dSC, numSalonChar, sizeof(char) * MAX_SALON + 1);
+
+		if (strcmp(numSalonChar, "-1\n") == 0)
 		{
-			perror("Erreur au recv");
-			exit(-1);
+			numSalon = -1;
+		}
+		else
+		{
+			// if (strcmp(numSalonChar, "0\n") == 0)
+			// {
+			// 	numSalon = 0;
+			// }
+			// else
+			// {
+			// 	int buffer = atoi(numSalonChar);
+			// 	if (buffer == 0)
+			// 	{
+			// 		sendingDM(pseudoSender, "Veuillez rentrer un nombre valide\n");
+			// 		free(numSalonChar);
+			// 		return 1;
+			// 	}
+			// 	else
+			// 	{
+			// 		numSalon = buffer;
+			// 	}
+			// }
+			numSalon = atoi(numSalonChar);
 		}
 
-		numSalon = atoi(numSalonChar);
-		printf("ICI: %d\n", numSalon);
-		
 		if (numSalon == -1)
 		{
 			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
 		}
-		else if (numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		else if (numSalon >= 0 && numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		{
 			tabClient[i].idSalon = numSalon;
+			sendingDM(pseudoSender, "Vous avez été déplacé dans le salon\n");
 		}
 		else
 		{
 			sendingDM(pseudoSender, "Ce salon comporte trop de membres ou n'existe pas, veuillez réessayer plus tard.\n");
 		}
 
+		free(numSalonChar);
 		return 1;
 	}
 	else if (strToken[0] == '/')
