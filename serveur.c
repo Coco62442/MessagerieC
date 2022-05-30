@@ -571,7 +571,7 @@ void ecritureSalon()
 	}
     int place;
 	
-	for (int i = 0; i < MAX_SALON; i++)
+	for (int i = 1; i < MAX_SALON; i++)
     {
         place = 0;
 		sleep(0.2);
@@ -586,7 +586,7 @@ void ecritureSalon()
 			place += 3;
             printf("place = %d\n",place); // à revérifier (+2 ou +4 pour aucune raison, nbChiffreDansNombre ?)
     
-			// variable définissant une ligne du dossier à écrire
+			// variable définissant une ligne du fichier à écrire
             char* ligne = malloc(sizeof(char) * place);
 			// écriture de l'id du salon
 			char idSal[intId];
