@@ -24,6 +24,7 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <dirent.h>
 #include <ctype.h>
 
+
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
  *
@@ -78,7 +79,7 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
-#define MAX_SALON 3
+#define MAX_SALON 5
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 Salon tabSalon[MAX_SALON];
@@ -551,7 +552,7 @@ int nbChiffreDansNombre(int nombre)
     int nbChiffre = 0;
     while(nombre > 0) {
         nombre = nombre/10;
-        nbChiffre++;
+        nbChiffre += 1;
     } 
     return nbChiffre;
 }
@@ -562,47 +563,55 @@ int nbChiffreDansNombre(int nombre)
  */
 void ecritureSalon()
 {
-    printf("dans le ecriture");
     FILE *stream = fopen("fichierSalon.txt", "w");
 	if (stream == NULL)
 	{
 		fprintf(stderr, "Cannot open file for writing\n");
 		exit(-1);
 	}
-    printf("fichierouvert");
-    int place = 0;
+    int place;
+	
 	for (int i = 0; i < MAX_SALON; i++)
     {
-        printf("dans le for");
         place = 0;
+		sleep(0.2);
         if (tabSalon[i].isOccupiedSalon)
         {
-            printf("dans le if");
-            place += nbChiffreDansNombre(tabSalon[i].idSalon);
+			int intId = nbChiffreDansNombre(tabSalon[i].idSalon);
+            place += intId;
             place += strlen(tabSalon[i].nom);
-            place += nbChiffreDansNombre(tabSalon[i].nbPlace);
+			int intNbPlace = nbChiffreDansNombre(tabSalon[i].nbPlace);
+            place += intNbPlace;
             place += strlen(tabSalon[i].description);
+			place += 3;
+            printf("place = %d\n",place); // à revérifier (+2 ou +4 pour aucune raison, nbChiffreDansNombre ?)
     
-            printf("avant ligne");
+			// variable définissant une ligne du dossier à écrire
             char* ligne = malloc(sizeof(char) * place);
-            strcpy(ligne,tabSalon[i].idSalon);
+			// écriture de l'id du salon
+			char idSal[intId];
+			sprintf(idSal, "%d", tabSalon[i].idSalon);
+            strcpy(ligne,idSal);
             strcat(ligne," ");
+			// écriture du nom du salon
             strcat(ligne,tabSalon[i].nom);
             strcat(ligne," ");
-            strcat(ligne,tabSalon[i].nbPlace);
+			// écriture de la place (nombre d'utilisateur max pour le salon)
+			char nbSal[intNbPlace];
+			sprintf(nbSal, "%d", tabSalon[i].nbPlace);
+            strcat(ligne, nbSal);
             strcat(ligne," ");
+			// écriture de la description du salon
             strcat(ligne,tabSalon[i].description);
             strcat(ligne,"\n");
-            
-            printf("apres ligne");
-            //fputs(ligne, stream);
+            printf(ligne);
+			
+            //écriture dans le fichier de la ligne
             fwrite(ligne, sizeof(char), place, stream);
-            printf("apres write");
+			free(ligne);
         }  
     }
-    printf("avant close");
     fclose(stream);
-    printf("aores close");
 }
 
 /**
@@ -881,6 +890,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 			// TODO: ecrire dans un fichier les infos du salon
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
+		
+		sleep(0.5);
         ecritureSalon();
 		return 1;
 	}
