@@ -408,7 +408,6 @@ void *receivingForThread()
 			break;
 		}
 
-		// strcpy(r, strcat(r, "\n4 > "));
 		printf("%s", r);
 		free(r);
 	}
