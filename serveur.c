@@ -1,12 +1,12 @@
 /*
 // 
 SALON ENREGISTRE DANS UN DOC AVEC ID NOM DESC ? (mdp pour modifier et supp un salon ?)
-CHANGER GIVE NUMSALON
-CHANGER /SALON
+
 CREER CREER SALON, MODIFIER ET SUPPRIMER
 Gestion du ctrl +c (include + main + fonction sigintHandler)
 Structure salon + variables + sem/mutex
 Include time, ctype.h
+fonctions salonExiste && salonAcceptNewUser
 Veuillez trouver le diagramme de Séquence sur ce lien :
 //www.plantuml.com/plantuml/png/ROz12i9034NtESLVwg8Nc8KKz0Jg1KARnS0qaJGLZ-Esv-Z57B0LX488_9T7Gjens6CQ2d4NvZYNB1fhk8a_PNBwGZIdZI3X8WDhBwZLcQgyiYbjup_pxfn31j7ODzVj2TTbVfYEWkMDmkZtBd0977uH2MhQy1JcULncEIOYqPxQskfJ7m00
 */
@@ -541,6 +541,71 @@ void *envoieFichierThread(void *clientIndex)
 }
 
 /**
+ * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
+ *
+ * @param nombre le nombre dont on souhaite connaitre le chiffre
+ * @return le nombre de chiffre de ce nombre
+ */
+int nbChiffreDansNombre(int nombre)
+{
+    int nbChiffre = 0;
+    while(nombre > 0) {
+        nombre = nombre/10;
+        nbChiffre++;
+    } 
+    return nbChiffre;
+}
+
+/**
+ * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
+ *
+ */
+void ecritureSalon()
+{
+    printf("dans le ecriture");
+    FILE *stream = fopen("fichierSalon.txt", "w");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "Cannot open file for writing\n");
+		exit(-1);
+	}
+    printf("fichierouvert");
+    int place = 0;
+	for (int i = 0; i < MAX_SALON; i++)
+    {
+        printf("dans le for");
+        place = 0;
+        if (tabSalon[i].isOccupiedSalon)
+        {
+            printf("dans le if");
+            place += nbChiffreDansNombre(tabSalon[i].idSalon);
+            place += strlen(tabSalon[i].nom);
+            place += nbChiffreDansNombre(tabSalon[i].nbPlace);
+            place += strlen(tabSalon[i].description);
+    
+            printf("avant ligne");
+            char* ligne = malloc(sizeof(char) * place);
+            strcpy(ligne,tabSalon[i].idSalon);
+            strcat(ligne," ");
+            strcat(ligne,tabSalon[i].nom);
+            strcat(ligne," ");
+            strcat(ligne,tabSalon[i].nbPlace);
+            strcat(ligne," ");
+            strcat(ligne,tabSalon[i].description);
+            strcat(ligne,"\n");
+            
+            printf("apres ligne");
+            //fputs(ligne, stream);
+            fwrite(ligne, sizeof(char), place, stream);
+            printf("apres write");
+        }  
+    }
+    printf("avant close");
+    fclose(stream);
+    printf("aores close");
+}
+
+/**
  * @brief Permet de JOIN les threads terminés.
  *
  * @param numclient indice du thread à join
@@ -550,7 +615,6 @@ void endOfThread(int numclient)
 	pthread_join(tabThread[numclient], 0);
 	sem_post(&semaphoreThread);
 }
-
 
 /**
  * @brief Vérifie si un client souhaite utiliser une des commandes
@@ -817,6 +881,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			// TODO: ecrire dans un fichier les infos du salon
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
+        ecritureSalon();
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
