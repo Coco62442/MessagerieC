@@ -109,7 +109,7 @@ void *envoieFichier()
     if (dS_file == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Problème de création de socket client\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     // Nommage de la socket
@@ -123,7 +123,7 @@ void *envoieFichier()
     if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Problème de connexion au serveur\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
     printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
@@ -136,7 +136,7 @@ void *envoieFichier()
     if (stream == NULL)
     {
         fprintf(stderr, "[ENVOI FICHIER] Le fichier n'a pas pu être ouvert en écriture\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     fseek(stream, 0, SEEK_END);
@@ -152,17 +152,17 @@ void *envoieFichier()
     if (send(dS_file, &length, sizeof(int), 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send taille du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
     if (send(dS_file, fileName, sizeof(char) * 20, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send nom du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
     if (send(dS_file, toutFichier, sizeof(char) * tailleFichier, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send contenu du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 }
 
@@ -184,13 +184,13 @@ void *receptionFichier(void *ds)
     if (recv(ds_file, &tailleFichier, sizeof(int), 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv de la taille du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     if (recv(ds_file, fileName, sizeof(char) * 100, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv du nom du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     char *buffer = malloc(sizeof(char) * tailleFichier);
@@ -198,7 +198,7 @@ void *receptionFichier(void *ds)
     if (recv(ds_file, buffer, sizeof(char) * tailleFichier, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv du contenu du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
     printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] %s\n" ANSI_COLOR_RESET, buffer);
     printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Taille fichier = %d\n" ANSI_COLOR_RESET, tailleFichier);
@@ -210,13 +210,13 @@ void *receptionFichier(void *ds)
     if (stream == NULL)
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Impossible d'ouvrir le fichier en écriture\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     if (tailleFichier != fwrite(buffer, sizeof(char), tailleFichier, stream))
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Impossible d'écrire dans le fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     fseek(stream, 0, SEEK_END);
@@ -227,7 +227,7 @@ void *receptionFichier(void *ds)
     if (returnCode == EOF)
     {
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Problème de fermeture du fichier\n" ANSI_COLOR_RESET);
-        return;
+        return NULL;
     }
 
     if (tailleFichier != length)
@@ -437,7 +437,7 @@ void *receivingForThread()
     }
     shutdown(dS, 2);
     pthread_cancel(thread_sending);
-    return;
+    return NULL;
 }
 
 /**
