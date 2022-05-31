@@ -373,6 +373,7 @@ int useOfCommand(char *msg)
 
 		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
 		strcpy(nbPlaces, bufferNbPlaces);
+		printf("%s", bufferNbPlaces);
 		free(bufferNbPlaces);
 
 		char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
@@ -404,6 +405,7 @@ int useOfCommand(char *msg)
 
 		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		strcpy(description, bufferDescription);
+		printf("%s", bufferDescription);
 		free(bufferDescription);
 
 
