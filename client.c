@@ -348,8 +348,8 @@ int useOfCommand(char *msg)
 		strcpy(command, "/modif ");
 		strToken = strtok(NULL, " ");
 
-		// Vérification inutile car les salons sont forcement en un seul mot donc on nique par ca le fait qu'il fasse /modif Chat général
-		if (strcmp(strToken, "Chat général") == 0)
+		// Vérification qu'il n'essaye pas de changer le chat général
+		if (strcmp(strToken, "Chat_général") == 0)
 		{
 			printf("Vous ne pouvez pas apporter des modifications sur ce salon ;)\n");
 		}
