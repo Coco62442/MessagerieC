@@ -83,8 +83,9 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
-#define MAX_SALON 2
+#define MAX_SALON 5
 #define TAILLE_NOM_SALON 20
+#define TAILLE_DESCRIPTION 100
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 Salon tabSalon[MAX_SALON];
@@ -784,9 +785,32 @@ int useOfCommand(char *msg, char *pseudoSender)
 		free(afficheFichiers);
 		return 1;
 	}
-	else if (strcmp(strToken, "/créer") == 0)
+	else if (strcmp(strToken, "/créer\n") == 0)
 	{
-		// strToken = strtok(strToken, "\n");
+		long i = 0;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
+			{
+				break;
+			}
+			i++;
+		}
+		if (i == MAX_CLIENT)
+		{
+			perror("Pseudo pas trouvé");
+			exit(-1);
+		}
+
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		receiving(tabClient[i].dSC, nomSalon, sizeof(char) * TAILLE_NOM_SALON);
+
+		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
+		receiving(tabClient[i].dSC, nbPlaces, sizeof(char) * MAX_SALON);
+
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		receiving(tabClient[i].dSC, description, sizeof(char) * TAILLE_DESCRIPTION);
+
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = giveNumSalon();
 		printf("Num salon: %d\n", numSalon);
@@ -796,48 +820,21 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		else
 		{
-			char *nomSalon = strtok(NULL, " ");
-
-			// Vérification des paramètres de la commande
-			if (nomSalon == NULL)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
-			int nbPlaces = atoi(strtok(NULL, " "));
-
-			// Vérification des paramètres de la commande
-			if (nbPlaces < 1)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
-			char *description = strtok(NULL, "");
-
-			// Vérification des paramètres de la commande
-			if (description == NULL)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
 			printf("nom : %s\n", nomSalon);
-			printf("nbPlaces : %d\n", nbPlaces);
+			printf("nbPlaces : %s\n", nbPlaces);
+			printf("nbPlaces : %d\n", atoi(nbPlaces));
 			printf("%s\n", description);
 			tabSalon[numSalon].idSalon = numSalon;
 			tabSalon[numSalon].nom = nomSalon;
-			tabSalon[numSalon].nbPlace = nbPlaces;
+			tabSalon[numSalon].nbPlace = atoi(nbPlaces);
 			tabSalon[numSalon].description = description;
 			tabSalon[numSalon].isOccupiedSalon = 1;
 			pthread_mutex_unlock(&mutexSalon);
 			// TODO: ecrire dans un fichier les infos du salon
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
+
+		free(nbPlaces);
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
@@ -989,20 +986,19 @@ int useOfCommand(char *msg, char *pseudoSender)
 		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
 		nomSalon = strtok(NULL, " ");
 		nomSalon = strtok(nomSalon, "\n");
-		
+
 		// Verification que nomSalon n'est pas NULL
 		if (nomSalon == NULL)
 		{
 			sendingDM(pseudoSender, "Il est nécessaire de mettre le nom du salon à modifié\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
-		
+
 		nomSalon = strtok(nomSalon, "\n");
 
 		char *modifications = malloc(sizeof(char) * 300);
 
 		receiving(tabClient[i].dSC, modifications, sizeof(char) * 300);
-
 
 		int j = 0;
 		while (j < MAX_SALON)
@@ -1019,11 +1015,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
-
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = j;
 		char *nvNomSalon = strtok(modifications, " ");
-
 
 		// Vérification des paramètres de la commande
 		if (nvNomSalon == NULL)
@@ -1032,7 +1026,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			sendingDM(pseudoSender, "L'utilisation de la commande \"/modif\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
-
 
 		int nbPlaces = atoi(strtok(NULL, " "));
 

@@ -28,6 +28,9 @@
  * - aS = structure contenant toutes les informations de connexion du client au serveur
  */
 #define TAILLE_NOM_SALON 20
+#define TAILLE_DESCRIPTION 100
+#define MAX_SALON 5
+#define MAX_CLIENT 5
 char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 char nomFichier[20];
 int isEnd = 0;
@@ -342,6 +345,84 @@ int useOfCommand(char *msg)
 
 		return 1;
 	}
+	else if (strcmp(strToken, "/créer\n") == 0)
+	{
+
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		printf("Entrez le nom de votre salon\n");
+		fgets(nomSalon, TAILLE_NOM_SALON + 1, stdin);
+		nomSalon = strtok(nomSalon, "\n");
+
+		if (nomSalon == NULL)
+		{
+			printf("Vous devez rentrer le nom du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			return 1;
+		}
+
+		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
+		printf("Entrez le nombre maximum pour votre salon (ne rien mettre = maximum possible)\n");
+		fgets(nbPlaces, MAX_SALON + 1, stdin);
+		nbPlaces = strtok(nbPlaces, "\n");
+
+		char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
+
+		if (nbPlaces == NULL)
+		{
+			char *maxClient = malloc(sizeof(char) * MAX_CLIENT);
+			sprintf(maxClient, "%d", MAX_CLIENT);
+			strcpy(nbMax, maxClient);
+			free(maxClient);
+		}
+		else if (atoi(nbPlaces) < 1)
+		{
+			printf("Vous devez rentrer un nombre de place valide\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			free(nbPlaces);
+			free(nbMax);
+			return 1;
+		}
+		else
+		{
+			strcpy(nbMax, nbPlaces);
+		}
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		printf("Entrez la description de votre salon\n");
+		fgets(description, TAILLE_DESCRIPTION + 1, stdin);
+		description = strtok(description, "\n");
+
+		if (description == NULL)
+		{
+			printf("Vous devez rentrer la description du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			free(nbPlaces);
+			free(nbMax);
+			free(description);
+			return 1;
+		}
+		else
+		{
+			sending(strToken);
+			sleep(0.5);
+
+			sending(nomSalon);
+			sleep(0.5);
+			printf("ICI: %s\n", nbMax);
+			sending(nbMax);
+			sleep(0.5);
+			strcat(description, "\n");
+			sending(description);
+			sleep(0.5);
+
+			free(nomSalon);
+			free(nbPlaces);
+			free(nbMax);
+			free(description);
+		}
+
+		return 1;
+	}
+
 	else if (strcmp(strToken, "/modif") == 0)
 	{
 		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 7));
