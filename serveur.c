@@ -200,21 +200,16 @@ void afficheSalon(char *pseudoSender)
 			free(rep);
 			printf("%d",nb);
 		}
-		if(nb==4){ // DERNIER PAS AFFICHE
-			printf("dans le 5");
-			printf(chaineAffiche);
+		if(nb==4){
 			sendingDM(pseudoSender, chaineAffiche);
 			strcpy(chaineAffiche, "");
 			nb = 0;
 		}
 	}
-	printf("%d", nb);
 	if(nb!=0){
-		printf("dans nb fin");
 		sendingDM(pseudoSender, chaineAffiche);
 	}
 	free(chaineAffiche);
-    sendingDM(pseudoSender, "--------------------\n");
 }
 
 /**
@@ -575,7 +570,7 @@ void *envoieFichierThread(void *clientIndex)
 /**
  * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
  *
- * @param nombre le nombre dont on souhaite connaitre le chiffre
+ * @param nombre le nombre dont on souhaite connaitre la taille
  * @return le nombre de chiffre de ce nombre
  */
 int nbChiffreDansNombre(int nombre)
@@ -925,9 +920,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 			pthread_mutex_unlock(&mutexSalon);
 			// TODO: ecrire dans un fichier les infos du salon
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
+        	ecritureSalon();
 		}
 		
-        ecritureSalon();
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
