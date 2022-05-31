@@ -347,17 +347,29 @@ int useOfCommand(char *msg)
 		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 7));
 		strcpy(command, "/modif ");
 		strToken = strtok(NULL, " ");
-		strcat(command, strToken);
 
-		sending(command);
+		// Vérification inutile car les salons sont forcement en un seul mot donc on nique par ca le fait qu'il fasse /modif Chat général
+		if (strcmp(strToken, "Chat général") == 0)
+		{
+			printf("Vous ne pouvez pas apporter des modifications sur ce salon ;)\n");
+		}
+		else
+		{
+			strcat(command, strToken);
 
-		printf("Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n");
-		char *modifs = malloc(sizeof(char) * 300);
+			sending(command);
 
-		fgets(modifs, 301, stdin);
-		printf("Modifs: %s\n", modifs);
+			printf("Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n");
+			char *modifs = malloc(sizeof(char) * 300);
 
-		sending(modifs);
+			fgets(modifs, 301, stdin);
+			printf("Modifs: %s\n", modifs);
+
+			sending(modifs);
+
+			free(command);
+			free(modifs);
+		}
 		return 1;
 	}
 

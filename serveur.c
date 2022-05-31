@@ -571,7 +571,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		msg = strtok(NULL, "");
 		if (msg == NULL)
 		{
-			sendingDM(pseudoSender, "Message à envoyé vide\n\Faites \"/aide\" pour plus d'informations\n");
+			sendingDM(pseudoSender, "Message à envoyé vide\nFaites \"/aide\" pour plus d'informations\n");
 			printf("Commande \"/mp\" mal utilisée\n");
 			return 1;
 		}
@@ -988,19 +988,21 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
 		nomSalon = strtok(NULL, " ");
-
+		nomSalon = strtok(nomSalon, "\n");
+		
 		// Verification que nomSalon n'est pas NULL
 		if (nomSalon == NULL)
 		{
 			sendingDM(pseudoSender, "Il est nécessaire de mettre le nom du salon à modifié\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
-
+		
 		nomSalon = strtok(nomSalon, "\n");
 
 		char *modifications = malloc(sizeof(char) * 300);
 
 		receiving(tabClient[i].dSC, modifications, sizeof(char) * 300);
+
 
 		int j = 0;
 		while (j < MAX_SALON)
@@ -1017,9 +1019,11 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
+
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = j;
 		char *nvNomSalon = strtok(modifications, " ");
+
 
 		// Vérification des paramètres de la commande
 		if (nvNomSalon == NULL)
@@ -1028,6 +1032,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			sendingDM(pseudoSender, "L'utilisation de la commande \"/modif\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
+
 
 		int nbPlaces = atoi(strtok(NULL, " "));
 
@@ -1053,14 +1058,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 		printf("nbPlaces : %d\n", nbPlaces);
 		printf("%s\n", description);
 		tabSalon[numSalon].idSalon = numSalon;
-		tabSalon[numSalon].nom = nvNomSalon;
+		strcpy(tabSalon[numSalon].nom, nvNomSalon);
 		tabSalon[numSalon].nbPlace = nbPlaces;
-		tabSalon[numSalon].description = description;
+		strcpy(tabSalon[numSalon].description, description);
 		tabSalon[numSalon].isOccupiedSalon = 1;
 		pthread_mutex_unlock(&mutexSalon);
 		// TODO: ecrire dans un fichier les infos du salon
 		sendingDM(pseudoSender, "Le salon a bien été modifé\n");
 
+		free(modifications);
 		return 1;
 	}
 
@@ -1291,7 +1297,7 @@ int main(int argc, char *argv[])
 	tabSalon[0].idSalon = 0;
 	tabSalon[0].isOccupiedSalon = 1;
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
-	tabSalon[0].nom = "Chat générale";
+	tabSalon[0].nom = "Chat général";
 	tabSalon[0].description = "Salon général par défaut\n";
 	tabSalon[0].nbPlace = MAX_CLIENT;
 
