@@ -40,7 +40,7 @@ struct Client
 	int isOccupied;
 	long dSC;
 	int idSalon;
-	char *pseudo;
+	char *pseudo; // 20
 	long dSCFC;
 	char nomFichier[100];
 };
@@ -51,7 +51,7 @@ struct Client
  * @param idSalon id du salon
  * @param isOccupiedSalon 1 si le Salon existe ; 0 sinon
  * @param nom Appellation du Salon, donné à la création
- * @param description Description du salon, donné à la création
+ * @param description Description du salon, donné à la création max 200
  * @param nbPlace nombre de place que peut accepter le salon, donné à la création
  */
 typedef struct Salon Salon;
@@ -59,8 +59,8 @@ struct Salon
 {
 	int idSalon;
 	int isOccupiedSalon;
-	char *nom;
-	char *description;
+	char *nom; // 20
+	char *description; // 200
 	int nbPlace;
 };
 
@@ -79,7 +79,10 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
-#define MAX_SALON 5
+#define MAX_SALON 7
+#define TAILLE_PSEUDO 20
+#define TAILLE_DESCRIPTION 100
+#define TAILLE_NOM_SALON 20
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 Salon tabSalon[MAX_SALON];
@@ -162,28 +165,56 @@ int verifPseudo(char *pseudo)
  */
 void afficheSalon(char *pseudoSender)
 {
-    for (int i = 0; i < MAX_SALON; i++)
-    {
-        char j[MAX_SALON];
-        if (tabSalon[i].isOccupiedSalon)
-        {
-            sprintf(j, "%d", i);
-            char *rep = malloc(sizeof(char) * 300);
-            strcpy(rep, "-------------------------------------\n");
-            strcat(rep, j);
-            strcat(rep, ": ");
-            strcat(rep, "Nom: ");
-            strcat(rep, tabSalon[i].nom);
-            strcat(rep, "\n");
-            strcat(rep, "Description: ");
-            strcat(rep, tabSalon[i].description);
-            strcat(rep, "\n\n");
-            sendingDM(pseudoSender, rep);
-            sleep(0.3);
-            free(rep);
-        }
-    }
-    sendingDM(pseudoSender, "-------------------------------------\n");
+	char* chaineAffiche = malloc(sizeof(char) * (TAILLE_DESCRIPTION+TAILLE_NOM_SALON+50) * 4); // Tous les 5 salon envoi de la chaine concaténée
+	int place;
+	int nb = 0;
+	char x[MAX_SALON];
+	for (int i = 0; i < MAX_SALON; i++)
+	{
+		if (tabSalon[i].isOccupiedSalon)
+		{
+			nb++;
+			place = 0;
+			int intId = nbChiffreDansNombre(tabSalon[i].idSalon);
+			place += intId;
+			place += strlen(tabSalon[i].nom);
+			place += strlen(tabSalon[i].description);
+			place += 50; // 22+3+6+2+14+3 pour les caractères visuels
+
+			char *rep = malloc(sizeof(char) * place);
+
+			sprintf(x, "%d", i);
+			strcpy(rep, "--------------------\n"); // 22
+			strcat(rep, x);
+			strcat(rep, ": ");
+			strcat(rep, "Nom: ");
+			strcat(rep, tabSalon[i].nom);
+			strcat(rep, "\n");
+			strcat(rep, "Description: ");
+			strcat(rep, tabSalon[i].description);
+			strcat(rep, "\n");
+
+			strcat(chaineAffiche,rep);
+			printf(chaineAffiche);
+
+			free(rep);
+			printf("%d",nb);
+		}
+		if(nb==4){ // DERNIER PAS AFFICHE
+			printf("dans le 5");
+			printf(chaineAffiche);
+			sendingDM(pseudoSender, chaineAffiche);
+			strcpy(chaineAffiche, "");
+			nb = 0;
+		}
+	}
+	printf("%d", nb);
+	if(nb!=0){
+		printf("dans nb fin");
+		sendingDM(pseudoSender, chaineAffiche);
+	}
+	free(chaineAffiche);
+    sendingDM(pseudoSender, "--------------------\n");
 }
 
 /**
@@ -573,18 +604,22 @@ void ecritureSalon()
 	
 	for (int i = 1; i < MAX_SALON; i++)
     {
-        place = 0;
-		sleep(0.2);
         if (tabSalon[i].isOccupiedSalon)
         {
+			place = 0;
+
 			int intId = nbChiffreDansNombre(tabSalon[i].idSalon);
             place += intId;
+
             place += strlen(tabSalon[i].nom);
+
 			int intNbPlace = nbChiffreDansNombre(tabSalon[i].nbPlace);
             place += intNbPlace;
+			
             place += strlen(tabSalon[i].description);
-			place += 3;
-            printf("place = %d\n",place); // à revérifier (+2 ou +4 pour aucune raison, nbChiffreDansNombre ?)
+			
+			place += 3; // trois espace 
+            printf("place = %d\n",place);
     
 			// variable définissant une ligne du fichier à écrire
             char* ligne = malloc(sizeof(char) * place);
@@ -639,7 +674,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	if (strcmp(strToken, "/mp") == 0)
 	{
 		// Récupération du pseudo à qui envoyer le mp
-		char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
+		char *pseudoReceiver = (char *)malloc(sizeof(char) * 20);
 		pseudoReceiver = strtok(NULL, " ");
 		if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
 		{
@@ -733,6 +768,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 				char *msgToSend = (char *)malloc(sizeof(char) * 120);
 				strcpy(msgToSend, tabClient[i].pseudo);
 				strcat(msgToSend, " est en ligne\n");
+				sleep(0.2);
 				sendingDM(pseudoSender, msgToSend);
 				free(msgToSend);
 			}
@@ -891,7 +927,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		}
 		
-		sleep(0.5);
         ecritureSalon();
 		return 1;
 	}
