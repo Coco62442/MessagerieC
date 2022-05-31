@@ -24,6 +24,9 @@ Veuillez trouver le diagramme de Séquence sur ce lien :
 #include <dirent.h>
 #include <ctype.h>
 
+int giveNumClient();
+int nbChiffreDansNombre(int nombre);
+void sendingDM(char *pseudoReceiver, char *msg);
 
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
@@ -195,7 +198,7 @@ void afficheSalon(char *pseudoSender)
 			strcat(rep, "\n");
 
 			strcat(chaineAffiche,rep);
-			printf(chaineAffiche);
+			// printf(chaineAffiche);
 
 			free(rep);
 			printf("%d",nb);
@@ -634,7 +637,7 @@ void ecritureSalon()
 			// écriture de la description du salon
             strcat(ligne,tabSalon[i].description);
             strcat(ligne,"\n");
-            printf(ligne);
+            // printf(ligne);
 			
             //écriture dans le fichier de la ligne
             fwrite(ligne, sizeof(char), place, stream);
@@ -755,20 +758,39 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
     else if (strcmp(strToken, "/enLigne\n") == 0)
 	{
-		int i = 0;
-		while (i < MAX_CLIENT)
+		char* chaineEnLigne = malloc(sizeof(char) * (TAILLE_PSEUDO+15) * 20); // Tous les 20 utilisateurs envoi de la chaine concaténée
+		int nb = 0;
+	
+		for (int i = 0; i < MAX_CLIENT; i++)
 		{
+			printf("i : %d\n", i);
 			if (tabClient[i].isOccupied)
 			{
-				char *msgToSend = (char *)malloc(sizeof(char) * 120);
+				nb++;
+				printf("if : %s\n", tabClient[i].pseudo);
+				char *msgToSend = (char *)malloc(sizeof(char) * (TAILLE_PSEUDO+15));
 				strcpy(msgToSend, tabClient[i].pseudo);
 				strcat(msgToSend, " est en ligne\n");
-				sleep(0.2);
-				sendingDM(pseudoSender, msgToSend);
+
+				strcat(chaineEnLigne,msgToSend);
+
 				free(msgToSend);
 			}
-			i++;
+			if(nb==20){
+				sendingDM(pseudoSender, chaineEnLigne);
+				strcpy(chaineEnLigne, "");
+				nb = 0;
+			}
 		}
+		printf("%d pre : %s\n", nb, chaineEnLigne);
+		if(nb!=0){
+			printf("avant : %s\n", chaineEnLigne);
+			sendingDM(pseudoSender, chaineEnLigne);
+			printf("après : %s\n", chaineEnLigne);
+		}
+		printf("post : %s\n", chaineEnLigne);
+		free(chaineEnLigne);
+
 		return 1;
 	}
 	else if (strcmp(strToken, "/déposer\n") == 0)
