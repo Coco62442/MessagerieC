@@ -27,6 +27,7 @@
  * - portServeur = port du serveur sur lequel est connecté le client
  * - aS = structure contenant toutes les informations de connexion du client au serveur
  */
+#define TAILLE_NOM_SALON 20
 char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 char nomFichier[20];
 int isEnd = 0;
@@ -208,7 +209,7 @@ void *receptionFichier(void *ds)
 		remove(emplacementFichier);
 		shutdown(ds_file, 2);
 		printf("Un problème est survenue\n");
-		printf("Veuillez choisir de nous le fichier que vous désirez\n");
+		printf("Veuillez choisir de nouveau le fichier que vous désirez\n");
 		useOfCommand("/télécharger\n");
 	}
 
@@ -229,10 +230,10 @@ void *receptionFichier(void *ds)
  */
 int useOfCommand(char *msg)
 {
-	if (strcmp(msg, "/déposer\n") == 0)
+	char *strToken = strtok(msg, " ");
+	if (strcmp(strToken, "/déposer\n") == 0)
 	{
-		sending(msg);
-
+		sending(strToken);
 		char *tabFichier[50];
 		DIR *folder;
 		struct dirent *entry;
@@ -284,11 +285,9 @@ int useOfCommand(char *msg)
 
 		return 1;
 	}
-	else if (strcmp(msg, "/télécharger\n") == 0)
+	else if (strcmp(strToken, "/télécharger\n") == 0)
 	{
-
-		sending(msg);
-
+		sending(strToken);
 		// Création de la socket
 		int dS_file = socket(PF_INET, SOCK_STREAM, 0);
 		if (dS_file == -1)
@@ -341,6 +340,24 @@ int useOfCommand(char *msg)
 			exit(-1);
 		}
 
+		return 1;
+	}
+	else if (strcmp(strToken, "/modif") == 0)
+	{
+		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 7));
+		strcpy(command, "/modif ");
+		strToken = strtok(NULL, " ");
+		strcat(command, strToken);
+
+		sending(command);
+
+		printf("Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n");
+		char *modifs = malloc(sizeof(char) * 300);
+
+		fgets(modifs, 301, stdin);
+		printf("Modifs: %s\n", modifs);
+
+		sending(modifs);
 		return 1;
 	}
 
