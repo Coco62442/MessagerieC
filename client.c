@@ -355,6 +355,7 @@ int useOfCommand(char *msg)
 		bufferNomSalon = strtok(bufferNomSalon, "\n");
 		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
 		strcpy(nomSalon, bufferNomSalon);
+		printf("%s", bufferNomSalon);
 		free(bufferNomSalon);
 
 		if (nomSalon == NULL)
@@ -372,6 +373,7 @@ int useOfCommand(char *msg)
 
 		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
 		strcpy(nbPlaces, bufferNbPlaces);
+		free(bufferNbPlaces);
 
 		char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
 
@@ -402,6 +404,7 @@ int useOfCommand(char *msg)
 
 		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		strcpy(description, bufferDescription);
+		free(bufferDescription);
 
 
 		if (description == NULL)
