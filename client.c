@@ -1,14 +1,17 @@
 // #######  	CHANGEMENTS  	##############
+// Corentin :
 // les threads sont instancies en global
 // si receiving recoit le code de deconnexion serveur receiving s arrete et kill thread sending pr termine le client
 // ajout de la variable portServeur
 // envoieFichier comme pr le serveur retouchée
 // changements ds useOfCommands
 
+// Lexay :
 // les printfs ont des couleurs : fin de communication = yellow
 //                                msg reçus = green
 //                                msg système = magenta
 //                                msg d'erreur = red
+// déclaration des fonctions au début du client
 
 #include <stdio.h>
 #include <sys/socket.h>
@@ -53,6 +56,16 @@ struct sockaddr_in aS;
 pthread_t thread_sending;
 pthread_t thread_receiving;
 
+// Déclaration des fonctions
+int endOfCommunication(char *msg);
+void sending(char *msg);
+void *envoieFichier();
+void *receptionFichier(void *ds);
+int useOfCommand(char *msg);
+void *sendingForThread();
+void *receivingForThread();
+void sigintHandler(int sig_num);
+
 /**
  * @brief Vérifie si un client souhaite quitter la communication.
  *
@@ -78,7 +91,7 @@ void sending(char *msg)
     if (send(dS, msg, strlen(msg) + 1, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "Erreur au send\n" ANSI_COLOR_RESET);
-        exit(-1);
+        return;
     }
 }
 
