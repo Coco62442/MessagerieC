@@ -807,6 +807,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
 		receiving(tabClient[i].dSC, nbPlaces, sizeof(char) * MAX_SALON);
+		printf("ICI: %s\n", nbPlaces);
 
 		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		receiving(tabClient[i].dSC, description, sizeof(char) * TAILLE_DESCRIPTION);
@@ -821,9 +822,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		else
 		{
 			printf("nom : %s\n", nomSalon);
-			printf("nbPlaces : %s\n", nbPlaces);
-			printf("nbPlaces : %d\n", atoi(nbPlaces));
-			printf("%s\n", description);
+			printf("nbPlaces1 : %s\n", nbPlaces);
+			printf("nbPlaces2 : %d\n", atoi(nbPlaces));
+			printf("Description : %s\n", description);
 			tabSalon[numSalon].idSalon = numSalon;
 			tabSalon[numSalon].nom = nomSalon;
 			tabSalon[numSalon].nbPlace = atoi(nbPlaces);
@@ -1095,7 +1096,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			// if (strcmp(numSalonChar, "0\n") == 0)
 			// {
-			// 	numSalon = 0;
+			// numSalon = 0;
 			// }
 			// else
 			// {

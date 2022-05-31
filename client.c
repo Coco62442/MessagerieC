@@ -348,10 +348,14 @@ int useOfCommand(char *msg)
 	else if (strcmp(strToken, "/créer\n") == 0)
 	{
 
-		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		char *bufferNomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
 		printf("Entrez le nom de votre salon\n");
-		fgets(nomSalon, TAILLE_NOM_SALON + 1, stdin);
-		nomSalon = strtok(nomSalon, "\n");
+		fgets(bufferNomSalon, TAILLE_NOM_SALON + 1, stdin);
+		sleep(0.3);
+		bufferNomSalon = strtok(bufferNomSalon, "\n");
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		strcpy(nomSalon, bufferNomSalon);
+		free(bufferNomSalon);
 
 		if (nomSalon == NULL)
 		{
@@ -360,10 +364,14 @@ int useOfCommand(char *msg)
 			return 1;
 		}
 
-		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
+		char *bufferNbPlaces = malloc(sizeof(char) * MAX_SALON);
 		printf("Entrez le nombre maximum pour votre salon (ne rien mettre = maximum possible)\n");
-		fgets(nbPlaces, MAX_SALON + 1, stdin);
-		nbPlaces = strtok(nbPlaces, "\n");
+		fgets(bufferNbPlaces, MAX_SALON + 1, stdin);
+		sleep(0.3);
+		bufferNbPlaces = strtok(bufferNbPlaces, "\n");
+
+		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
+		strcpy(nbPlaces, bufferNbPlaces);
 
 		char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
 
@@ -386,10 +394,15 @@ int useOfCommand(char *msg)
 		{
 			strcpy(nbMax, nbPlaces);
 		}
-		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		char *bufferDescription = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		printf("Entrez la description de votre salon\n");
-		fgets(description, TAILLE_DESCRIPTION + 1, stdin);
-		description = strtok(description, "\n");
+		fgets(bufferDescription, TAILLE_DESCRIPTION + 1, stdin);
+		sleep(0.3);
+		bufferDescription = strtok(bufferDescription, "\n");
+
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		strcpy(description, bufferDescription);
+
 
 		if (description == NULL)
 		{
@@ -398,7 +411,6 @@ int useOfCommand(char *msg)
 			free(nbPlaces);
 			free(nbMax);
 			free(description);
-			return 1;
 		}
 		else
 		{
@@ -407,6 +419,7 @@ int useOfCommand(char *msg)
 
 			sending(nomSalon);
 			sleep(0.5);
+			nbMax = strtok(nbMax, "\n");
 			printf("ICI: %s\n", nbMax);
 			sending(nbMax);
 			sleep(0.5);
