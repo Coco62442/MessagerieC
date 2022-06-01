@@ -345,109 +345,27 @@ int useOfCommand(char *msg)
 
 		return 1;
 	}
-	// else if (strcmp(strToken, "/créer\n") == 0)
-	// {
-	// 	char *
-		
-
-	// 	char *bufferNomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-	// 	printf("Entrez le nom de votre salon\n");
-	// 	fgets(bufferNomSalon, TAILLE_NOM_SALON + 1, stdin);
-	// 	sleep(0.3);
-	// 	bufferNomSalon = strtok(bufferNomSalon, "\n");
-	// 	char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-	// 	strcpy(nomSalon, bufferNomSalon);
-	// 	printf("%s", bufferNomSalon);
-	// 	free(bufferNomSalon);
-
-	// 	if (nomSalon == NULL)
-	// 	{
-	// 		printf("Vous devez rentrer le nom du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-	// 		free(nomSalon);
-	// 		return 1;
-	// 	}
-
-	// 	char *bufferNbPlaces = malloc(sizeof(char) * MAX_SALON);
-	// 	printf("Entrez le nombre maximum pour votre salon (ne rien mettre = maximum possible)\n");
-	// 	fgets(bufferNbPlaces, MAX_SALON + 1, stdin);
-	// 	sleep(0.3);
-	// 	bufferNbPlaces = strtok(bufferNbPlaces, "\n");
-
-	// 	char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
-	// 	strcpy(nbPlaces, bufferNbPlaces);
-	// 	printf("%s", bufferNbPlaces);
-	// 	free(bufferNbPlaces);
-
-	// 	char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
-
-	// 	if (nbPlaces == NULL)
-	// 	{
-	// 		char *maxClient = malloc(sizeof(char) * MAX_CLIENT);
-	// 		sprintf(maxClient, "%d", MAX_CLIENT);
-	// 		strcpy(nbMax, maxClient);
-	// 		free(maxClient);
-	// 	}
-	// 	else if (atoi(nbPlaces) < 1)
-	// 	{
-	// 		printf("Vous devez rentrer un nombre de place valide\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-	// 		free(nomSalon);
-	// 		free(nbPlaces);
-	// 		free(nbMax);
-	// 		return 1;
-	// 	}
-	// 	else
-	// 	{
-	// 		strcpy(nbMax, nbPlaces);
-	// 	}
-	// 	char *bufferDescription = malloc(sizeof(char) * TAILLE_DESCRIPTION);
-	// 	printf("Entrez la description de votre salon\n");
-	// 	fgets(bufferDescription, TAILLE_DESCRIPTION + 1, stdin);
-	// 	sleep(0.3);
-	// 	bufferDescription = strtok(bufferDescription, "\n");
-
-	// 	char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
-	// 	strcpy(description, bufferDescription);
-	// 	printf("%s", bufferDescription);
-	// 	free(bufferDescription);
-
-
-	// 	if (description == NULL)
-	// 	{
-	// 		printf("Vous devez rentrer la description du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-	// 		free(nomSalon);
-	// 		free(nbPlaces);
-	// 		free(nbMax);
-	// 		free(description);
-	// 	}
-	// 	else
-	// 	{
-	// 		sending(strToken);
-	// 		sleep(0.5);
-
-	// 		sending(nomSalon);
-	// 		sleep(0.5);
-	// 		nbMax = strtok(nbMax, "\n");
-	// 		printf("ICI: %s\n", nbMax);
-	// 		sending(nbMax);
-	// 		sleep(0.5);
-	// 		strcat(description, "\n");
-	// 		sending(description);
-	// 		sleep(0.5);
-
-	// 		free(nomSalon);
-	// 		free(nbPlaces);
-	// 		free(nbMax);
-	// 		free(description);
-	// 	}
-
-	// 	return 1;
-	// }
-
 	else if (strcmp(strToken, "/modif") == 0)
 	{
-		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 7));
-		strcpy(command, "/modif ");
 		strToken = strtok(NULL, " ");
+		strToken = strtok(strToken, "\n");
+		if (strToken == NULL)
+		{
+			printf("Vous devez rentrer le nom du salon que vous voulez modifier\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		
+		printf("Nom: %s\n", strToken);
+
+		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 8));
+		strcpy(command, "/modif ");
+		strcat(command, strToken);
+
+		sending(command);
+
+		printf("Commande: %s\n", command);
+
+		free(command);
 
 		// Vérification qu'il n'essaye pas de changer le chat général
 		if (strcmp(strToken, "Chat_général") == 0)
@@ -456,19 +374,14 @@ int useOfCommand(char *msg)
 		}
 		else
 		{
-			strcat(command, strToken);
-
-			sending(command);
-
 			printf("Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n");
-			char *modifs = malloc(sizeof(char) * 300);
+			char *modifs = malloc(sizeof(char) * (TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10));
 
-			fgets(modifs, 301, stdin);
+			fgets(modifs, TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10, stdin);
 			printf("Modifs: %s\n", modifs);
 
 			sending(modifs);
 
-			free(command);
 			free(modifs);
 		}
 		return 1;

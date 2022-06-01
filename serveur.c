@@ -794,7 +794,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 			sendingDM(pseudoSender, "Le maximum de salon est atteint vous ne pouvez pas en créer pour le moment\n");
 			return 1;
 		}
-		
 
 		strToken = strtok(NULL, "");
 		strToken = strtok(strToken, "\n");
@@ -812,7 +811,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		strToken = strtok(NULL, " ");
 		printf("ICI2: %s\n", strToken);
-		
+
 		int nbPlaces;
 		if (strToken == NULL)
 		{
@@ -828,7 +827,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			nbPlaces = MAX_CLIENT;
 		}
-		else {
+		else
+		{
 			nbPlaces = atoi(strToken);
 		}
 
@@ -851,42 +851,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 		printf("Nb: %d\n", nbPlaces);
 
 		printf("desc: %s\n", description);
-		
 
-		// char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-		// receiving(tabClient[i].dSC, nomSalon, sizeof(char) * TAILLE_NOM_SALON);
-
-		// char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
-		// receiving(tabClient[i].dSC, nbPlaces, sizeof(char) * MAX_SALON);
-		// printf("ICI: %s\n", nbPlaces);
-
-		// char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
-		// receiving(tabClient[i].dSC, description, sizeof(char) * TAILLE_DESCRIPTION);
-
-		// pthread_mutex_lock(&mutexSalon);
-		// int numSalon = giveNumSalon();
-		// printf("Num salon: %d\n", numSalon);
-		// if (numSalon == -1)
-		// {
-		// 	sendingDM(pseudoSender, "Le maximum de salon est atteint, vous ne pouvez pas en créer un autre pour le moment\n");
-		// }
-		// else
-		// {
-		// 	printf("nom : %s\n", nomSalon);
-		// 	printf("nbPlaces1 : %s\n", nbPlaces);
-		// 	printf("nbPlaces2 : %d\n", atoi(nbPlaces));
-		// 	printf("Description : %s\n", description);
-			tabSalon[numSalon].idSalon = numSalon;
-			tabSalon[numSalon].nom = nomSalon;
-			tabSalon[numSalon].nbPlace = nbPlaces;
-			tabSalon[numSalon].description = description;
-			tabSalon[numSalon].isOccupiedSalon = 1;
-			pthread_mutex_unlock(&mutexSalon);
-		// 	// TODO: ecrire dans un fichier les infos du salon
-			sendingDM(pseudoSender, "Le salon a bien été créé\n");
-		// }
-
-		// free(nbPlaces);
+		tabSalon[numSalon].idSalon = numSalon;
+		tabSalon[numSalon].nom = nomSalon;
+		tabSalon[numSalon].nbPlace = nbPlaces;
+		tabSalon[numSalon].description = description;
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+		// TODO: ecrire dans un fichier les infos du salon
+		sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
@@ -1020,6 +993,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/modif") == 0)
 	{
+		char *nomSalon = strtok(NULL, " ");
 		int i = 0;
 		while (i < MAX_CLIENT)
 		{
@@ -1035,9 +1009,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			exit(-1);
 		}
 
-		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-		nomSalon = strtok(NULL, " ");
-		nomSalon = strtok(nomSalon, "\n");
+		printf("Nom: %s\n", nomSalon);
 
 		// Verification que nomSalon n'est pas NULL
 		if (nomSalon == NULL)
@@ -1046,11 +1018,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
-		nomSalon = strtok(nomSalon, "\n");
+		char *modifications = malloc(sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
 
-		char *modifications = malloc(sizeof(char) * 300);
-
-		receiving(tabClient[i].dSC, modifications, sizeof(char) * 300);
+		receiving(tabClient[i].dSC, modifications, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
 
 		int j = 0;
 		while (j < MAX_SALON)
@@ -1067,51 +1037,72 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
-		pthread_mutex_lock(&mutexSalon);
 		int numSalon = j;
-		char *nvNomSalon = strtok(modifications, " ");
 
-		// Vérification des paramètres de la commande
-		if (nvNomSalon == NULL)
+		modifications = strtok(modifications, "\n");
+		modifications = strtok(modifications, " ");
+		printf("NvNom: %s\n", modifications);
+
+		
+
+		if (modifications == NULL)
 		{
-			pthread_mutex_unlock(&mutexSalon);
-			sendingDM(pseudoSender, "L'utilisation de la commande \"/modif\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
 
-		int nbPlaces = atoi(strtok(NULL, " "));
+		strcpy(nomSalon, modifications);
 
-		// Vérification des paramètres de la commande
-		if (nbPlaces < 1)
+		modifications = strtok(NULL, " ");
+		printf("NbPlace: %s\n", modifications);
+
+		int nbPlaces;
+		if (modifications == NULL)
 		{
-			pthread_mutex_unlock(&mutexSalon);
-			sendingDM(pseudoSender, "L'utilisation de la commande \"/modif\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(modifications) < 1)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(modifications) > MAX_CLIENT)
+		{
+			nbPlaces = MAX_CLIENT;
+		}
+		else
+		{
+			nbPlaces = atoi(modifications);
+		}
+
+		modifications = strtok(NULL, "");
+		printf("Desc: %s\n", modifications);
+
+		if (modifications == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
 
-		char *description = strtok(NULL, "");
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		strcpy(description, modifications);
+		// strcat(description, "\n");
 
-		// Vérification des paramètres de la commande
-		if (description == NULL)
-		{
-			pthread_mutex_unlock(&mutexSalon);
-			sendingDM(pseudoSender, "L'utilisation de la commande \"/modif\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-			return 1;
-		}
+		printf("Nom: %s\n", nomSalon);
 
-		printf("nom : %s\n", nvNomSalon);
-		printf("nbPlaces : %d\n", nbPlaces);
-		printf("%s\n", description);
-		tabSalon[numSalon].idSalon = numSalon;
-		strcpy(tabSalon[numSalon].nom, nvNomSalon);
+		printf("Nb: %d\n", nbPlaces);
+
+		printf("desc: %s\n", description);
+
+		pthread_mutex_lock(&mutexSalon);
+		tabSalon[numSalon].nom = nomSalon;
 		tabSalon[numSalon].nbPlace = nbPlaces;
-		strcpy(tabSalon[numSalon].description, description);
+		tabSalon[numSalon].description = description;
 		tabSalon[numSalon].isOccupiedSalon = 1;
 		pthread_mutex_unlock(&mutexSalon);
 		// TODO: ecrire dans un fichier les infos du salon
 		sendingDM(pseudoSender, "Le salon a bien été modifé\n");
-
-		free(modifications);
 		return 1;
 	}
 
