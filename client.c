@@ -9,6 +9,9 @@
 #include <dirent.h>
 #include <time.h>
 
+/**
+ * Définition des différents codes pour l'utilisation de couleurs dans le texte
+ */
 #define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_YELLOW "\x1b[33m"
@@ -17,23 +20,25 @@
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
+/**
+ * Définition de la taille maximale de certaines variables
+ */
 #define TAILLE_NOM_SALON 20
 #define TAILLE_DESCRIPTION 100
 #define MAX_SALON 5
 #define MAX_CLIENT 5
 
 /**
- * - DOSSIER_ENVOI_FICHIERS = chemin du fichier dans lequel sont stockés les fichiers de transfert
  * - nomFichier = nom du fichier à transférer
  * - isEnd = booléen vérifiant si le client est connecté ou s'il a terminé la discussion avec le serveur
  * - dS = socket du serveur
  * - boolConnect = booléen vérifiant si le client est connecté afin de gérer les signaux (CTRL+C)
- * - thread_files = thread gérant le transfert de fichiers
  * - addrServeur = adresse du serveur sur laquelle est connecté le client
  * - portServeur = port du serveur sur lequel est connecté le client
  * - aS = structure contenant toutes les informations de connexion du client au serveur
+ * - thread_sending = thread gérant l'envoi de messages
+ * - thread_receiving = thread gérant la réception de messages
  */
-char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
 char nomFichier[20];
 int isEnd = 0;
 int dS = -1;
@@ -41,8 +46,6 @@ int boolConnect = 0;
 char *addrServeur;
 int portServeur;
 struct sockaddr_in aS;
-
-// Création des threads
 pthread_t thread_sending;
 pthread_t thread_receiving;
 
@@ -53,6 +56,7 @@ void *envoieFichier();
 void *receptionFichier(void *ds);
 int useOfCommand(char *msg);
 void *sendingForThread();
+void receiving(char *rep, ssize_t size);
 void *receivingForThread();
 void sigintHandler(int sig_num);
 
@@ -116,7 +120,7 @@ void *envoieFichier()
     }
     printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
-    // DEBUT ENVOI FICHIER
+    // Début de l'envoi fichier
     char *path = malloc(sizeof(char) * 40);
     strcpy(path, "fichiers_client/");
     strcat(path, fileName);
@@ -303,7 +307,7 @@ int useOfCommand(char *msg)
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Problème de création de socket client\n" ANSI_COLOR_RESET);
             return 1;
         }
-        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Socket Créé\n" ANSI_COLOR_RESET);
+        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Socket créée\n" ANSI_COLOR_RESET);
 
         // Nommage de la socket
         aS.sin_family = AF_INET;
@@ -312,7 +316,7 @@ int useOfCommand(char *msg)
         socklen_t lgA = sizeof(struct sockaddr_in);
 
         // Envoi d'une demande de connexion
-        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Connection en cours...\n" ANSI_COLOR_RESET);
+        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Connexion en cours...\n" ANSI_COLOR_RESET);
         if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Problème de connexion au serveur\n" ANSI_COLOR_RESET);
@@ -323,7 +327,7 @@ int useOfCommand(char *msg)
         char *listeFichier = malloc(sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON));
         if (recv(dS_file, listeFichier, sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON), 0) == -1)
         {
-            printf(ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv de la liste des fichiers\n" ANSI_COLOR_RESET);
+            printf(ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur à la réception de la liste des fichiers\n" ANSI_COLOR_RESET);
             return 1;
         }
         printf(ANSI_COLOR_MAGENTA "%s" ANSI_COLOR_RESET, listeFichier);
@@ -356,7 +360,7 @@ int useOfCommand(char *msg)
 
         if (strToken == NULL)
         {
-            printf("Vous devez rentrer le nom du salon que vous voulez modifier\nFaites \"/aide\" pour plus d'informations\n");
+            printf("Vous devez entrer le nom du salon que vous voulez modifier\nFaites \"/aide\" pour plus d'informations\n");
             return 1;
         }
 
@@ -375,7 +379,7 @@ int useOfCommand(char *msg)
 
             free(command);
 
-            printf(ANSI_COLOR_MAGENTA "Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n" ANSI_COLOR_RESET);
+            printf(ANSI_COLOR_MAGENTA "Entrez les modifications du salon de la forme :\nnomSalon nbPlacesDispo description du salon\n" ANSI_COLOR_RESET);
             char *modifs = malloc(sizeof(char) * (TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10));
 
             fgets(modifs, TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10, stdin);
@@ -397,7 +401,7 @@ void *sendingForThread()
 {
     while (!isEnd)
     {
-        /*Saisie du message au clavier*/
+        // Saisie du message au clavier
         char *m = (char *)malloc(sizeof(char) * 100);
         fgets(m, 100, stdin);
 
@@ -413,8 +417,6 @@ void *sendingForThread()
             free(m);
             continue;
         }
-
-        // Envoi
         sending(m);
         free(m);
     }
@@ -498,10 +500,10 @@ int main(int argc, char *argv[])
     dS = socket(PF_INET, SOCK_STREAM, 0);
     if (dS == -1)
     {
-        fprintf(stderr, ANSI_COLOR_RED "Problème de création de socket client\n" ANSI_COLOR_RESET);
+        fprintf(stderr, ANSI_COLOR_RED "Problème de création de la socket client\n" ANSI_COLOR_RESET);
         return -1;
     }
-    printf(ANSI_COLOR_MAGENTA "Socket Créé\n" ANSI_COLOR_RESET);
+    printf(ANSI_COLOR_MAGENTA "Socket créée\n" ANSI_COLOR_RESET);
 
     // Nommage de la socket
     aS.sin_family = AF_INET;
@@ -525,7 +527,7 @@ int main(int argc, char *argv[])
     char *myPseudo = (char *)malloc(sizeof(char) * 12);
     do
     {
-        printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
+        printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères) :\n" ANSI_COLOR_RESET);
         fgets(myPseudo, 12, stdin);
         for (int i = 0; i < strlen(myPseudo); i++)
         {
@@ -547,7 +549,7 @@ int main(int argc, char *argv[])
     while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
     {
         // Saisie du pseudo du client au clavier
-        printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
+        printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères) :\n" ANSI_COLOR_RESET);
         fgets(myPseudo, 12, stdin);
 
         // Envoie du pseudo
@@ -566,13 +568,13 @@ int main(int argc, char *argv[])
 
     if (pthread_create(&thread_sending, NULL, sendingForThread, 0) < 0)
     {
-        fprintf(stderr, ANSI_COLOR_RED "Erreur de création de thread d'envoi client\n" ANSI_COLOR_RESET);
+        fprintf(stderr, ANSI_COLOR_RED "Erreur de création du thread d'envoi\n" ANSI_COLOR_RESET);
         exit(-1);
     }
 
     if (pthread_create(&thread_receiving, NULL, receivingForThread, 0) < 0)
     {
-        fprintf(stderr, ANSI_COLOR_RED "Erreur de création de thread réception client\n" ANSI_COLOR_RESET);
+        fprintf(stderr, ANSI_COLOR_RED "Erreur de création de thread réception\n" ANSI_COLOR_RESET);
         exit(-1);
     }
 
