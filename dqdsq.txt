@@ -1,0 +1,175 @@
+/*
+ * _____________________ MAIN _____________________
+ */
+// argv[1] = port
+int main(int argc, char *argv[])
+{
+	// Verification du nombre de paramètres
+	if (argc < 2)
+	{
+		perror("Erreur : Lancez avec ./serveur [votre_port] ");
+		exit(-1);
+	}
+	printf("Début programme\n");
+
+	portServeur = atoi(argv[1]);
+
+	// Fin avec Ctrl + C
+	signal(SIGINT, sigintHandler);
+
+	// Création du salon général de discussion
+	tabSalon[0].idSalon = 0;
+	tabSalon[0].isOccupiedSalon = 1;
+	tabSalon[0].nom = malloc(sizeof(char) * 40);
+	tabSalon[0].nom = "Chat_générale";
+	tabSalon[0].description = "Salon général par défaut";
+	tabSalon[0].nbPlace = MAX_CLIENT;
+
+	// ######################################### LEXAY ###################################
+	// Vérification et ré-instanciation des différents salons si créés auparavant
+	FILE *fic;
+	char *ligne = malloc(sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
+	int numSalon;
+	if ((fic = fopen("fichierSalon.txt", "r")) == NULL)
+	{
+		fprintf(stderr, "Le fichier 'fichierSalon.txt' n'a pas pu être ouvert\n");
+		exit(-1);
+	}
+	char *strToken;
+	char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+	char *desc = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+	while (fgets(ligne, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10), fic) != NULL)
+	{
+		pthread_mutex_lock(&mutexSalon);
+		strToken = strtok(ligne, " ");
+		numSalon = atoi(strToken);
+		if (numSalon == 0)
+		{
+			continue;
+		}
+		strToken = strtok(NULL, " ");
+		strcpy(nomSalon, strToken);
+		// tabSalon[numSalon].nom = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		printf("%s\n", nomSalon);
+		tabSalon[numSalon].nom = nomSalon;
+		printf("%s\n", tabSalon[numSalon].nom);
+		tabSalon[numSalon].nbPlace = atoi(strtok(NULL, " "));
+		strToken = strtok(NULL, "");
+		strcpy(desc, strToken);
+		tabSalon[numSalon].description = desc;
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+	}
+	free(ligne);
+	free(nomSalon);
+	free(desc);
+	if (fclose(fic) < 0)
+	{
+		fprintf(stderr, "La fermeture du fichier de description des salons a posé problème\n");
+		exit(-1);
+	}
+	// ######################################### FIN ###################################
+
+	// Création de la socket
+	dS_file = socket(PF_INET, SOCK_STREAM, 0);
+	if (dS_file < 0)
+	{
+		perror("[Fichier] Problème de création de socket serveur");
+		exit(-1);
+	}
+	printf("Socket [Fichier] Créé\n");
+
+	// Nommage de la socket
+	struct sockaddr_in ad_file;
+	ad_file.sin_family = AF_INET;
+	ad_file.sin_addr.s_addr = INADDR_ANY;
+	ad_file.sin_port = htons(portServeur + 1);
+	if (bind(dS_file, (struct sockaddr *)&ad_file, sizeof(ad_file)) < 0)
+	{
+		perror("[Fichier] Erreur lors du nommage de la socket");
+		exit(-1);
+	}
+	printf("[Fichier] Socket nommée\n");
+
+	// Passage de la socket en mode écoute
+	if (listen(dS_file, 7) < 0)
+	{
+		perror("[Fichier] Problème au niveau du listen");
+		exit(-1);
+	}
+	printf("[Fichier] Mode écoute\n");
+
+	// Création de la socket
+	dS = socket(PF_INET, SOCK_STREAM, 0);
+	if (dS < 0)
+	{
+		perror("Problème de création de socket serveur");
+		exit(-1);
+	}
+	printf("Socket Créé\n");
+
+	// Nommage de la socket
+	struct sockaddr_in ad;
+	ad.sin_family = AF_INET;
+	ad.sin_addr.s_addr = INADDR_ANY;
+	ad.sin_port = htons(atoi(argv[1]));
+	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
+	{
+		perror("Erreur lors du nommage de la socket");
+		exit(-1);
+	}
+	printf("Socket nommée\n");
+
+	// Initialisation du sémaphore pour gérer les clients
+	sem_init(&semaphore, PTHREAD_PROCESS_SHARED, MAX_CLIENT);
+
+	// Initialisation du sémaphore pour gérer les threads
+	sem_init(&semaphoreThread, PTHREAD_PROCESS_SHARED, 1);
+
+	// Passage de la socket en mode écoute
+	if (listen(dS, 7) < 0)
+	{
+		perror("Problème au niveau du listen");
+		exit(-1);
+	}
+	printf("Mode écoute\n");
+
+	while (1)
+	{
+		// Vérifions si on peut accepter un client
+		// On attends la disponibilité du sémaphore
+		sem_wait(&semaphore);
+
+		// Acceptons une connexion
+		struct sockaddr_in aC;
+		socklen_t lg = sizeof(struct sockaddr_in);
+		int dSC = accept(dS, (struct sockaddr *)&aC, &lg);
+		if (dSC < 0)
+		{
+			perror("Problème lors de l'acceptation du client\n");
+			exit(-1);
+		}
+		printf("Client %ld connecté\n", nbClient);
+
+		// Enregistrement du client
+		pthread_mutex_lock(&mutex);
+		long numClient = giveNumClient();
+		tabClient[numClient].isOccupied = 1;
+		tabClient[numClient].dSC = dSC;
+		tabClient[numClient].pseudo = " ";
+		pthread_mutex_unlock(&mutex);
+
+		//_____________________ Communication _____________________
+		if (pthread_create(&tabThread[numClient], NULL, communication, (void *)numClient) == -1)
+		{
+			perror("Erreur thread create");
+		}
+	}
+	// ############  	N'arrive jamais  	####################
+	shutdown(dS, 2);
+	sem_destroy(&semaphore);
+	sem_destroy(&semaphoreThread);
+	pthread_mutex_destroy(&mutex);
+	printf("Fin du programme\n");
+	// #########################################################
+}

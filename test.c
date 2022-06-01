@@ -1,21 +1,33 @@
 #include <stdio.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <string.h>
+#include <semaphore.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <signal.h>
+#include <time.h>
 
-#define ANSI_COLOR_RED     "\x1b[31m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
-
-int main (int argc, char const *argv[]) {
-
-  printf(ANSI_COLOR_RED     "This text is RED!"     ANSI_COLOR_RESET "\n");
-  printf(ANSI_COLOR_GREEN   "This text is GREEN!"   ANSI_COLOR_RESET "\n");
-  printf(ANSI_COLOR_YELLOW  "This text is YELLOW!"  ANSI_COLOR_RESET "\n");
-  printf(ANSI_COLOR_BLUE    "This text is BLUE!"    ANSI_COLOR_RESET "\n");
-  printf(ANSI_COLOR_MAGENTA "This text is MAGENTA!" ANSI_COLOR_RESET "\n");
-  printf(ANSI_COLOR_CYAN    "This text is CYAN!"    ANSI_COLOR_RESET "\n");
-
-  return 0;
+int main(int argc, char const *argv[])
+{
+  FILE *fic;
+  fic = fopen("fichierSalon.txt", "r");
+  char *ligne = malloc(100);
+  if (fic == NULL)
+	{
+		fprintf(stderr, "Le fichier 'salon.txt' n'a pas pu être ouvert\n");
+		exit(-1);
+	}
+  printf("ahah\n");
+  fgets(ligne, 100, fic);
+  printf("ahah\n");
+  printf("%s\n", ligne);
+  printf("ahah\n");
+  free(ligne);
+  printf("ahah\n");
+  fclose(fic);
+  printf("ahah\n");
+  return 1;
 }

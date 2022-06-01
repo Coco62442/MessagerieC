@@ -1,19 +1,3 @@
-// #######  	CHANGEMENTS  	##############
-// Corentin :
-// les threads sont instancies en global
-// si receiving recoit le code de deconnexion serveur receiving s arrete et kill thread sending pr termine le client
-// ajout de la variable portServeur
-// envoieFichier comme pr le serveur retouchée
-// changements ds useOfCommands
-
-// Lexay :
-// les printfs ont des couleurs : fin de communication = yellow
-//                                msg reçus = green
-//                                msg système = magenta
-//                                msg d'erreur = red
-// déclaration des fonctions au début du client
-// remplacement des exit(-1) qui étaient trop brutaux
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -32,6 +16,11 @@
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
+
+#define TAILLE_NOM_SALON 20
+#define TAILLE_DESCRIPTION 100
+#define MAX_SALON 5
+#define MAX_CLIENT 5
 
 /**
  * - DOSSIER_ENVOI_FICHIERS = chemin du fichier dans lequel sont stockés les fichiers de transfert
@@ -200,12 +189,11 @@ void *receptionFichier(void *ds)
         fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv du contenu du fichier\n" ANSI_COLOR_RESET);
         return NULL;
     }
-    printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] %s\n" ANSI_COLOR_RESET, buffer);
-    printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Taille fichier = %d\n" ANSI_COLOR_RESET, tailleFichier);
 
     char *emplacementFichier = malloc(sizeof(char) * 120);
     strcpy(emplacementFichier, "./fichiers_client/");
     strcat(emplacementFichier, fileName);
+
     FILE *stream = fopen(emplacementFichier, "w");
     if (stream == NULL)
     {
@@ -240,25 +228,24 @@ void *receptionFichier(void *ds)
     }
 
     free(fileName);
-    sleep(0.2);
     free(buffer);
-    sleep(0.2);
     free(emplacementFichier);
     shutdown(ds_file, 2);
+    printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Le fichier a bien été téléchargé\n" ANSI_COLOR_RESET);
 }
 
 /**
- * @brief Vérifie si un client souhaite utiliser une des commandes
- * disponibles.
+ * @brief Vérifie si un client souhaite utiliser une des commandes disponibles.
  *
  * @param msg message du client à vérifier
  * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg)
 {
-    if (strcmp(msg, "/déposer\n") == 0)
+    char *strToken = strtok(msg, " ");
+    if (strcmp(strToken, "/déposer\n") == 0)
     {
-        sending(msg);
+        sending(strToken);
 
         char *tabFichier[50];
         DIR *folder;
@@ -271,13 +258,13 @@ int useOfCommand(char *msg)
             fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Impossible d'ouvrir le dossier\n" ANSI_COLOR_RESET);
             return 1;
         }
+
         entry = readdir(folder);
         entry = readdir(folder);
         while ((entry = readdir(folder)))
         {
-
             tabFichier[files] = entry->d_name;
-            printf(ANSI_COLOR_MAGENTA "File %d: %s\n" ANSI_COLOR_RESET,
+            printf(ANSI_COLOR_MAGENTA "Fichier %d: %s\n" ANSI_COLOR_RESET,
                    files,
                    entry->d_name);
             files++;
@@ -290,16 +277,11 @@ int useOfCommand(char *msg)
         printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Fichier voulu %d\n" ANSI_COLOR_RESET, rep);
         while (rep < 0 || rep >= files)
         {
-            printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] REP1 :%d\n" ANSI_COLOR_RESET, rep);
             printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Veuillez entrer un numéro valide\n" ANSI_COLOR_RESET);
             scanf("%d", &rep);
-            printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] REP2 :%d\n" ANSI_COLOR_RESET, rep);
         }
 
-        printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, tabFichier[rep]);
         strcpy(nomFichier, tabFichier[rep]);
-
-        printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, nomFichier);
 
         pthread_t thread_envoieFichier;
 
@@ -310,10 +292,9 @@ int useOfCommand(char *msg)
 
         return 1;
     }
-    else if (strcmp(msg, "/télécharger\n") == 0)
+    else if (strcmp(strToken, "/télécharger\n") == 0)
     {
-
-        sending(msg);
+        sending(strToken);
 
         // Création de la socket
         int dS_file = socket(PF_INET, SOCK_STREAM, 0);
@@ -339,8 +320,8 @@ int useOfCommand(char *msg)
         }
         printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
-        char *listeFichier = malloc(sizeof(char) * 300);
-        if (recv(dS_file, listeFichier, sizeof(char) * 300, 0) == -1)
+        char *listeFichier = malloc(sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON));
+        if (recv(dS_file, listeFichier, sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON), 0) == -1)
         {
             printf(ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv de la liste des fichiers\n" ANSI_COLOR_RESET);
             return 1;
@@ -349,8 +330,7 @@ int useOfCommand(char *msg)
 
         char *numFichier = malloc(sizeof(char) * 5);
         fgets(numFichier, 5, stdin);
-        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] numChoisi %s\n" ANSI_COLOR_RESET, numFichier);
-        printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] strlen %ld\n" ANSI_COLOR_RESET, strlen(numFichier));
+
         int intNumFichier = atoi(numFichier);
 
         if (send(dS_file, &intNumFichier, sizeof(int), 0) == -1)
@@ -361,12 +341,52 @@ int useOfCommand(char *msg)
         free(numFichier);
 
         pthread_t thread_receiving_file;
+
         if (pthread_create(&thread_receiving_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur de création de thread de récéption client\n" ANSI_COLOR_RESET);
         }
+
         return 1;
     }
+    else if (strcmp(strToken, "/modif") == 0)
+    {
+        strToken = strtok(NULL, " ");
+        strToken = strtok(strToken, "\n");
+
+        if (strToken == NULL)
+        {
+            printf("Vous devez rentrer le nom du salon que vous voulez modifier\nFaites \"/aide\" pour plus d'informations\n");
+            return 1;
+        }
+
+        char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 8));
+        strcpy(command, "/modif ");
+        strcat(command, strToken);
+
+        // Vérification qu'il n'essaye pas de changer le chat général
+        if (strcmp(strToken, "Chat_général") == 0)
+        {
+            printf(ANSI_COLOR_MAGENTA "Vous ne pouvez pas apporter des modifications sur ce salon ;)\n" ANSI_COLOR_RESET);
+        }
+        else
+        {
+            sending(command);
+
+            free(command);
+
+            printf(ANSI_COLOR_MAGENTA "Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n" ANSI_COLOR_RESET);
+            char *modifs = malloc(sizeof(char) * (TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10));
+
+            fgets(modifs, TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10, stdin);
+
+            sending(modifs);
+
+            free(modifs);
+        }
+        return 1;
+    }
+
     return 0;
 }
 
@@ -387,6 +407,7 @@ void *sendingForThread()
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(m));
         strcpy(msgToVerif, m);
+
         if (useOfCommand(msgToVerif))
         {
             free(m);
@@ -431,7 +452,6 @@ void *receivingForThread()
             break;
         }
 
-        // strcpy(r, strcat(r, "\n4 > "));
         printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, r);
         free(r);
     }
@@ -530,6 +550,7 @@ int main(int argc, char *argv[])
         receiving(repServeur, sizeof(char) * 60);
         printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, repServeur);
     }
+
     free(myPseudo);
     printf(ANSI_COLOR_MAGENTA "Connexion complète\n" ANSI_COLOR_RESET);
     boolConnect = 1;
