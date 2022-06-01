@@ -11,16 +11,16 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-			/**
-			 * @brief Structure Client pour regrouper toutes les informations du client.
-			 *
-			 * @param isOccupied 1 si le Client est connecté au serveur ; 0 sinon
-			 * @param dSC Socket de transmission des messages classiques au Client
-			 * @param pseudo Appellation que le Client rentre à sa première connexion
-			 * @param dSCFC Socket de transfert des fichiers
-			 * @param nomFichier Nomination du fichier choisi par le client pour le transfert
-			 */
-			typedef struct Client Client;
+/**
+ * @brief Structure Client pour regrouper toutes les informations du client.
+ *
+ * @param isOccupied 1 si le Client est connecté au serveur ; 0 sinon
+ * @param dSC Socket de transmission des messages classiques au Client
+ * @param pseudo Appellation que le Client rentre à sa première connexion
+ * @param dSCFC Socket de transfert des fichiers
+ * @param nomFichier Nomination du fichier choisi par le client pour le transfert
+ */
+typedef struct Client Client;
 struct Client
 {
 	int isOccupied;
@@ -210,7 +210,7 @@ void afficheSalon(char *pseudoSender)
 
 			free(rep);
 		}
-		if (nb == 4)
+		if (nb == 3)
 		{
 			sendingDM(pseudoSender, chaineAffiche);
 			strcpy(chaineAffiche, "");
@@ -977,6 +977,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 
@@ -990,11 +991,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 		else if (atoi(strToken) < 1)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 		else if (atoi(strToken) > MAX_CLIENT)
@@ -1011,6 +1016,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 
@@ -1143,14 +1150,14 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
-		tabClient[j].idSalon = 0;
+		tabClient[i].idSalon = 0;
 
 		sendingDM(pseudoToKick, "Vous avez été kick du salon\nVous voilà sur le salon général\n");
 
 		char *rep = malloc(sizeof(char) * 50);
-		strcpy(rep, tabClient[j].pseudo);
-		strcat(rep, "a été kick du salon\n");
-		sending(dS, rep, tabClient[i].idSalon);
+		strcpy(rep, tabClient[i].pseudo);
+		strcat(rep, " a été kick du salon\n");
+		sending(dS, rep, tabClient[j].idSalon);
 
 		return 1;
 	}
@@ -1470,6 +1477,7 @@ void sigintHandler(int sig_num)
  * _____________________ MAIN _____________________
  */
 // argv[1] = port
+
 int main(int argc, char *argv[])
 {
 	// Verification du nombre de paramètres
@@ -1478,6 +1486,7 @@ int main(int argc, char *argv[])
 		perror("Erreur : Lancez avec ./serveur [votre_port] ");
 		exit(-1);
 	}
+
 	printf("Début programme\n");
 
 	portServeur = atoi(argv[1]);
@@ -1532,6 +1541,7 @@ int main(int argc, char *argv[])
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
+
 	if (dS_file < 0)
 	{
 		perror("[Fichier] Problème de création de socket serveur");
@@ -1544,6 +1554,7 @@ int main(int argc, char *argv[])
 	ad_file.sin_family = AF_INET;
 	ad_file.sin_addr.s_addr = INADDR_ANY;
 	ad_file.sin_port = htons(portServeur + 1);
+
 	if (bind(dS_file, (struct sockaddr *)&ad_file, sizeof(ad_file)) < 0)
 	{
 		perror("[Fichier] Erreur lors du nommage de la socket");
@@ -1573,6 +1584,7 @@ int main(int argc, char *argv[])
 	ad.sin_family = AF_INET;
 	ad.sin_addr.s_addr = INADDR_ANY;
 	ad.sin_port = htons(atoi(argv[1]));
+
 	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
 	{
 		perror("Erreur lors du nommage de la socket");
