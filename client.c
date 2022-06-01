@@ -527,6 +527,13 @@ int main(int argc, char *argv[])
 	{
 		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
 		fgets(myPseudo, 12, stdin);
+		for (int i = 0; i < strlen(myPseudo); i++)
+		{
+			if (myPseudo[i] == ' ')
+			{
+				myPseudo[i] = '_';
+			}
+		}
 	} while (strcmp(myPseudo, "\n") == 0);
 
 	// Envoie du pseudo
