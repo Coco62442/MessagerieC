@@ -102,7 +102,7 @@ void afficheSalon(char *pseudoEnvoyeur);
 int salonExiste(int numSalon);
 int accepteNouvelUtilisateur(int numSalon);
 long pseudoTodSC(char *pseudo);
-void sending(int dS, char *msg, int id);
+void envoi(int dS, char *msg, int id);
 void envoiATous(char *msg);
 void envoiPrive(char *pseudoRecepteur, char *msg);
 void reception(int dS, char *rep, ssize_t size);
@@ -113,7 +113,7 @@ void *envoieFichierThread(void *clientIndex);
 int nbChiffreDansNombre(int nombre);
 void ecritureSalon();
 void endOfThread(int numclient);
-int useOfCommand(char *msg, char *pseudoEnvoyeur);
+int utilisationCommande(char *msg, char *pseudoEnvoyeur);
 void *communication(void *clientParam);
 void sigintHandler(int sig_num);
 
@@ -312,7 +312,7 @@ long pseudoToInt(char *pseudo)
  * @param msg message à envoyer
  * @param idSalon id du salon sur lequel envoyé le message
  */
-void sending(int dS, char *msg, int idSalon)
+void envoi(int dS, char *msg, int idSalon)
 {
 	for (int i = 0; i < MAX_CLIENT; i++)
 	{
@@ -696,7 +696,7 @@ void endOfThread(int numclient)
  *
  * @return 1 si le client utilise une commande, 0 sinon.
  */
-int useOfCommand(char *msg, char *pseudoEnvoyeur)
+int utilisationCommande(char *msg, char *pseudoEnvoyeur)
 {
 	char *strToken = strtok(msg, " ");
 	if (strcmp(strToken, "/mp") == 0)
@@ -931,9 +931,9 @@ int useOfCommand(char *msg, char *pseudoEnvoyeur)
 
 		strcpy(tabClient[i].nomFichier, nomFichier);
 
-		pthread_t envoieFichier;
+		pthread_t envoiFichier;
 
-		if (pthread_create(&envoieFichier, NULL, envoieFichierThread, (void *)(long)i) == -1)
+		if (pthread_create(&envoiFichier, NULL, envoieFichierThread, (void *)(long)i) == -1)
 		{
 			perror("Erreur thread create");
 		}
@@ -1121,7 +1121,7 @@ int useOfCommand(char *msg, char *pseudoEnvoyeur)
 		char *rep = malloc(sizeof(char) * (TAILLE_PSEUDO + 24));
 		strcpy(rep, tabClient[i].pseudo);
 		strcat(rep, " a été kick du salon\n"); // 24
-		sending(dS, rep, tabClient[j].idSalon);
+		envoi(dS, rep, tabClient[j].idSalon);
 
 		return 1;
 	}
@@ -1319,7 +1319,7 @@ void *communication(void *clientParam)
 	{
 		// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
 		strcat(pseudo, " a rejoint la communication\n");
-		sending(tabClient[numClient].dSC, pseudo, 0);
+		envoi(tabClient[numClient].dSC, pseudo, 0);
 	}
 
 	// On a un client en plus sur le serveur, on incrémente
@@ -1329,10 +1329,10 @@ void *communication(void *clientParam)
 
 	printf("Clients connectés : %ld\n", nbClient);
 
-	int isEnd = 0;
+	int estFin = 0;
 	char *pseudoEnvoyeur = tabClient[numClient].pseudo;
 
-	while (!isEnd)
+	while (!estFin)
 	{
 		// Réception du message
 		char *msgReceived = (char *)malloc(sizeof(char) * TAILLE_MESSAGE);
@@ -1340,13 +1340,13 @@ void *communication(void *clientParam)
 		printf("\nMessage recu: %s \n", msgReceived);
 
 		// On verifie si le client veut terminer la communication
-		isEnd = finDeCommunication(msgReceived);
+		estFin = finDeCommunication(msgReceived);
 
 		// On vérifie si le client utilise une des commandes
 		char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
 		strcpy(msgToVerif, msgReceived);
 
-		if (useOfCommand(msgToVerif, pseudoEnvoyeur))
+		if (utilisationCommande(msgToVerif, pseudoEnvoyeur))
 		{
 			free(msgReceived);
 			continue;
@@ -1361,7 +1361,7 @@ void *communication(void *clientParam)
 
 		// Envoi du message aux autres clients
 		printf("Envoi du message aux %ld clients. \n", nbClient - 1);
-		sending(tabClient[numClient].dSC, msgAEnvoyer, tabClient[numClient].idSalon);
+		envoi(tabClient[numClient].dSC, msgAEnvoyer, tabClient[numClient].idSalon);
 
 		free(msgAEnvoyer);
 	}
