@@ -1,14 +1,13 @@
-<<<<<<< HEAD
-  -------Commandes disponibles :
+  __________________Commandes disponibles :__________________
   
   Afficher l'aide :
   '/aide'
   
+  Envoyer un message à tous les utilisateurs connectés dans votre salon :
+  'message'
+
   Envoyer un message a un ami grâce à son nom d'utilisateur :
   '/mp nomUtilisateur message'
-  
-  Envoyer un message à tout les utilisateurs connectés :
-  'message'
 
   Liste des utilisateurs en ligne :
   '/enLigne'
@@ -16,11 +15,31 @@
   Savoir si un utilisateur est en ligne :
   '/estConnecte nomUtilisateur'
 
-  Déposer un fichier au serveur présent dans le dossier "fichiers_client" :
+  Déposer sur le serveur un fichier présent dans le dossier "fichiers_client" :
   '/déposer'
 
-  Télécharger un fichier du serveur disponible :
+  Télécharger un fichier disponible sur le serveur :
   '/télécharger'
+
+  Créer un nouveau salon de communication :
+  '/créer nomSalon nbPlacesDispo description du salon'
+
+  Liste des salons disponibles :
+  '/liste'
+
+  Modifier un salon existant :
+  '/modif nomSalon'
+
+  Supprimer un salon existant :
+  '/suppression nomSalon'
+
+  Se connecter à un salon existant :
+  '/connexionSalon'
+
+  Virer un utilisateur du même salon que vous (autre que le salon général) :
+  '/kick nomUtilisateur'
   
   Se déconnecter :
   '/fin'
+  ___________________________________________________________
+  
