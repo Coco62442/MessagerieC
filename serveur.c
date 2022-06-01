@@ -1470,6 +1470,7 @@ void sigintHandler(int sig_num)
  * _____________________ MAIN _____________________
  */
 // argv[1] = port
+// TODO: verif pseudo pas d espace
 int main(int argc, char *argv[])
 {
 	// Verification du nombre de paramètres
