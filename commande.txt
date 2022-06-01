@@ -1,0 +1,25 @@
+  -------Commandes disponibles :
+  
+  Afficher l'aide :
+  '/aide'
+  
+  Envoyer un message a un ami grâce à son nom d'utilisateur :
+  '/mp nomUtilisateur message'
+  
+  Envoyer un message à tout les utilisateurs connectés :
+  'message'
+
+  Liste des utilisateurs en ligne :
+  '/enLigne'
+
+  Savoir si un utilisateur est en ligne :
+  '/estConnecte nomUtilisateur'
+
+  Déposer un fichier au serveur présent dans le dossier "fichiers_client" :
+  '/déposer'
+
+  Télécharger un fichier du serveur disponible :
+  '/télécharger'
+  
+  Se déconnecter :
+  '/fin'
