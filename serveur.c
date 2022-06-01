@@ -1,27 +1,3 @@
-// #######  	CHANGEMENTS NIV1  	##############
-// ajout ds la struct client l id du salon sur lequel il est co
-// ajout de la struct Salon
-// variable globale nbFiles disparait (sers a rien)
-// ajout variable globale MAX_SALON
-// instanciation du tableau tabSalon[MAX_SALON]
-// changement de la fct sending()
-// ajout de la fct sendingAll()
-// fct ecritureFichier() renvoie mtn un int si ca c'est bien passe ou non (fichier existant ou nn)
-// + changement de la fct ecriture fichier au niv des fwrite et fread surtt
-// ptits changements d envoieFichierThread aussi
-// changements fct useOfommand du type on prend en compt qu il a mis un / ou il a mal utilise la commande
-// mutex qd on incremente nbclient l941 environ
-// ds la fct useOfCommands je prends en compte si le message commence par un '/'
-// ds ce cas j envoie pas le message et lui dit de faire /aide
-// changement fct ctrl + c pr qu il finisse bien les clients
-// l919 connection sur le salon generale
-// ajout de la variable globale portServeur
-
-// #######  	CHANGEMENTS NIV2 (salon)  	##############
-// ajout de la fct giveNumSalon()
-// ajout des commandes /liste (donne la liste des salons) /créer (creer un salon de la fomre '/créer NomDuSalon NombresDePlacesMax Description du salon')
-// ajout du mutex lorsqu'on touche au tableau de salon
-
 #include <stdio.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -34,8 +10,6 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
-// TODO: Déclarer fct
 
 /**
  * @brief Structure Client pour regrouper toutes les informations du client.
@@ -108,6 +82,29 @@ sem_t semaphore;
 sem_t semaphoreThread;
 pthread_mutex_t mutex;
 pthread_mutex_t mutexSalon;
+
+// Déclaration des fonctions
+int giveNumClient();
+int giveNumSalon();
+int verifPseudo(char *pseudo);
+void afficheSalon(char *pseudoSender);
+int salonExiste(int numSalon);
+int salonAcceptNewUser(int numSalon);
+long pseudoTodSC(char *pseudo);
+void sending(int dS, char *msg, int id);
+void sendingAll(char *msg);
+void sendingDM(char *pseudoReceiver, char *msg);
+void receiving(int dS, char *rep, ssize_t size);
+int endOfCommunication(char *msg);
+int ecritureFichier(char *nomFichier, char *buffer, int tailleFichier);
+void *copieFichierThread(void *clientIndex);
+void *envoieFichierThread(void *clientIndex);
+int nbChiffreDansNombre(int nombre);
+void ecritureSalon();
+void endOfThread(int numclient);
+int useOfCommand(char *msg, char *pseudoSender);
+void *communication(void *clientParam);
+void sigintHandler(int sig_num);
 
 /**
  * @brief Fonctions pour gérer les indices du tableaux de clients.
@@ -225,6 +222,26 @@ void afficheSalon(char *pseudoSender)
 		sendingDM(pseudoSender, chaineAffiche);
 	}
 	free(chaineAffiche);
+}
+
+/**
+ * @brief Fonctions pour vérifier si le salon existe pour un idSalon.
+ *
+ * @param numSalon id de salon à vérifier si existant
+ * @return un integer ;
+ *         1 si le salon existe,
+ *         0 si le salon n'existe pas.
+ */
+int salonExiste(int numSalon)
+{
+	if (numSalon > MAX_SALON || numSalon < 0)
+	{
+		return 0;
+	}
+	else
+	{
+		return tabSalon[numSalon].isOccupiedSalon;
+	}
 }
 
 /**
@@ -537,12 +554,15 @@ void *envoieFichierThread(void *clientIndex)
 	char *path = malloc(sizeof(char) * 120);
 	strcpy(path, "./fichiers_serveur/");
 	strcat(path, nomFichier);
+
 	FILE *stream = fopen(path, "r");
+
 	if (stream == NULL)
 	{
 		fprintf(stderr, "[ENVOI FICHIER] Cannot open file for reading\n");
 		exit(-1);
 	}
+
 	fseek(stream, 0, SEEK_END);
 	int length = ftell(stream);
 	fseek(stream, 0, SEEK_SET);
@@ -550,8 +570,6 @@ void *envoieFichierThread(void *clientIndex)
 	// Lecture et stockage pour envoi du fichier
 	char *toutFichier = malloc(sizeof(char) * length);
 	int tailleFichier = fread(toutFichier, sizeof(char), length, stream);
-	printf("Bytes fichier %d\n", tailleFichier);
-	printf("Taille fichier %d\n", length);
 
 	// Envoi de la taille du fichier, puis de son nom
 	if (send(tabClient[i].dSCFC, &length, sizeof(int), 0) == -1)
@@ -579,65 +597,83 @@ void *envoieFichierThread(void *clientIndex)
 }
 
 /**
- * @brief Fonctions pour envoyer à un utilisateur tout les salons disponible
+ * @brief Permet de savoir la taille d'un chiffre.
  *
- * @param pseudo pseudo à qui envoyer l'information
- * @return une chaine ;
- *         composée de la description des salons disponibles (id, nom, nbPlace et description)
+ * @param nombre le nombre dont on souhaite connaitre la taille
+ * @return le nombre de chiffre qui compose ce nombre.
  */
-void afficheSalon(char *pseudoSender)
+int nbChiffreDansNombre(int nombre)
 {
-	for (int i = 0; i < MAX_SALON; i++)
+	int nbChiffre = 0;
+	while (nombre > 0)
 	{
-		char j[MAX_SALON];
-		if (tabSalon[i].isOccupiedSalon)
-		{
-			sprintf(j, "%d", i);
-			char *rep = malloc(sizeof(char) * 300);
-			strcpy(rep, "-------------------------------------\n");
-			strcat(rep, j);
-			strcat(rep, ": ");
-			strcat(rep, "Nom: ");
-			strcat(rep, tabSalon[i].nom);
-			strcat(rep, "\n");
-			strcat(rep, "Description: ");
-			strcat(rep, tabSalon[i].description);
-			strcat(rep, "\n\n");
-			sendingDM(pseudoSender, rep);
-			sleep(0.3);
-			free(rep);
-		}
+		nombre = nombre / 10;
+		nbChiffre += 1;
 	}
-	sendingDM(pseudoSender, "-------------------------------------\n");
+	return nbChiffre;
 }
 
 /**
- * @brief Fonctions pour vérifier si un salon peut accepter un nouvel utilisateur.
+ * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
  *
- * @param numSalon id de salon à vérifier si acceptant
- * @return un integer ;
- *         1 si le salon a de la place,
- *         0 si le salon n'en a pas.
  */
-int salonAcceptNewUser(int numSalon)
+void ecritureSalon()
 {
-	int nbPlace = 0;
-	for (int i = 0; i < MAX_CLIENT; i++)
+	FILE *stream = fopen("fichierSalon.txt", "w");
+
+	if (stream == NULL)
 	{
-		// On n'envoie pas au client qui a écrit le message
-		if (tabClient[i].isOccupied && tabClient[i].idSalon == numSalon)
+		fprintf(stderr, "Cannot open file for writing\n");
+		exit(-1);
+	}
+
+	int place;
+
+	for (int i = 1; i < MAX_SALON; i++)
+	{
+		if (tabSalon[i].isOccupiedSalon)
 		{
-			nbPlace++;
+			place = 0;
+
+			int intId = nbChiffreDansNombre(tabSalon[i].idSalon);
+			place += intId;
+
+			place += strlen(tabSalon[i].nom);
+
+			int intNbPlace = nbChiffreDansNombre(tabSalon[i].nbPlace);
+			place += intNbPlace;
+
+			place += strlen(tabSalon[i].description);
+
+			place += 3; // trois espace
+			printf("place = %d\n", place);
+
+			// Variable définissant une ligne du fichier à écrire
+			char *ligne = malloc(sizeof(char) * place);
+			// écriture de l'id du salon
+			char idSal[intId];
+			sprintf(idSal, "%d", tabSalon[i].idSalon);
+			strcpy(ligne, idSal);
+			strcat(ligne, " ");
+			// écriture du nom du salon
+			strcat(ligne, tabSalon[i].nom);
+			strcat(ligne, " ");
+			// écriture de la place (nombre d'utilisateur max pour le salon)
+			char nbSal[intNbPlace];
+			sprintf(nbSal, "%d", tabSalon[i].nbPlace);
+			strcat(ligne, nbSal);
+			strcat(ligne, " ");
+			// écriture de la description du salon
+			strcat(ligne, tabSalon[i].description);
+			strcat(ligne, "\n");
+			// printf(ligne);
+
+			//écriture dans le fichier de la ligne
+			fwrite(ligne, sizeof(char), place, stream);
+			free(ligne);
 		}
 	}
-	if (nbPlace < tabSalon[numSalon].nbPlace)
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
+	fclose(stream);
 }
 
 /**
@@ -657,6 +693,7 @@ void endOfThread(int numclient)
  *
  * @param msg message du client à vérifier
  * @param pseudoSender pseudo du client qui envoie le message
+ *
  * @return 1 si le client utilise une commande, 0 sinon.
  */
 int useOfCommand(char *msg, char *pseudoSender)
@@ -667,20 +704,24 @@ int useOfCommand(char *msg, char *pseudoSender)
 		// Récupération du pseudo à qui envoyer le mp
 		char *pseudoReceiver = (char *)malloc(sizeof(char) * 100);
 		pseudoReceiver = strtok(NULL, " ");
+
 		if (pseudoReceiver == NULL || verifPseudo(pseudoReceiver) == 0)
 		{
 			sendingDM(pseudoSender, "Pseudo érronné ou utilisation incorrecte de la commande /mp\nFaites \"/aide\" pour plus d'informations\n");
 			printf("Commande \"/mp\" mal utilisée\n");
 			return 1;
 		}
+
 		char *msg = (char *)malloc(sizeof(char) * 115);
 		msg = strtok(NULL, "");
+
 		if (msg == NULL)
 		{
 			sendingDM(pseudoSender, "Message à envoyé vide\nFaites \"/aide\" pour plus d'informations\n");
 			printf("Commande \"/mp\" mal utilisée\n");
 			return 1;
 		}
+
 		// Préparation du message à envoyer
 		char *msgToSend = (char *)malloc(sizeof(char) * 115);
 		strcpy(msgToSend, pseudoSender);
@@ -716,6 +757,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			strcat(msgToSend, " n'est pas en ligne\n");
 			sendingDM(pseudoSender, msgToSend);
 		}
+
 		free(msgToSend);
 		return 1;
 	}
@@ -724,21 +766,18 @@ int useOfCommand(char *msg, char *pseudoSender)
 		// Envoie de l'aide au client, un message par ligne
 		FILE *fichierCom = NULL;
 		fichierCom = fopen("commande.txt", "r");
+
 		fseek(fichierCom, 0, SEEK_END);
 		int length = ftell(fichierCom);
 		fseek(fichierCom, 0, SEEK_SET);
 
 		if (fichierCom != NULL)
 		{
-			// char *chaine = (char *)malloc(100);
 			char *toutFichier = (char *)malloc(length);
 			fread(toutFichier, sizeof(char), length, fichierCom);
-			// while (fgets(chaine, 100, fichierCom) != NULL) // On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)
-			// {
-			// 	strcat(toutFichier, chaine);
-			// }
+
 			sendingDM(pseudoSender, toutFichier);
-			// free(chaine);
+
 			free(toutFichier);
 		}
 		else
@@ -751,24 +790,41 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/enLigne\n") == 0)
 	{
-		int i = 0;
-		while (i < MAX_CLIENT)
+		char *chaineEnLigne = malloc(sizeof(char) * (TAILLE_PSEUDO + 15) * 20); // Tous les 20 utilisateurs envoie de la chaine concaténée
+		int nb = 0;
+
+		for (int i = 0; i < MAX_CLIENT; i++)
 		{
 			if (tabClient[i].isOccupied)
 			{
-				char *msgToSend = (char *)malloc(sizeof(char) * 120);
+				nb++;
+				char *msgToSend = (char *)malloc(sizeof(char) * (TAILLE_PSEUDO + 15));
 				strcpy(msgToSend, tabClient[i].pseudo);
-				strcat(msgToSend, " est en ligne\n");
-				sendingDM(pseudoSender, msgToSend);
+				strcat(msgToSend, " est en ligne\n"); // Taille du message 15
+
+				strcat(chaineEnLigne, msgToSend);
+
 				free(msgToSend);
 			}
-			i++;
+			if (nb == 20)
+			{
+				sendingDM(pseudoSender, chaineEnLigne);
+				strcpy(chaineEnLigne, "");
+				nb = 0;
+			}
 		}
+		if (nb != 0)
+		{
+			sendingDM(pseudoSender, chaineEnLigne);
+		}
+		free(chaineEnLigne);
+
 		return 1;
 	}
 	else if (strcmp(strToken, "/déposer\n") == 0)
 	{
 		long i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -777,6 +833,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			i++;
 		}
+
 		if (i == MAX_CLIENT)
 		{
 			perror("Pseudo pas trouvé");
@@ -795,6 +852,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	else if (strcmp(strToken, "/télécharger\n") == 0)
 	{
 		long i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -803,6 +861,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			i++;
 		}
+
 		if (i == MAX_CLIENT)
 		{
 			perror("Pseudo pas trouvé");
@@ -813,6 +872,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		struct sockaddr_in aC;
 		socklen_t lg = sizeof(struct sockaddr_in);
 		tabClient[i].dSCFC = accept(dS_file, (struct sockaddr *)&aC, &lg);
+
 		if (tabClient[i].dSCFC < 0)
 		{
 			perror("Problème lors de l'acceptation du client\n");
@@ -827,6 +887,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		char numFile[10];
 
 		folder = opendir("fichiers_serveur");
+
 		if (folder == NULL)
 		{
 			perror("Unable to read directory");
@@ -836,6 +897,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		entry = readdir(folder);
 		entry = readdir(folder);
 		strcpy(afficheFichiers, "Liste des fichiers disponibles :\n");
+
 		while ((entry = readdir(folder)))
 		{
 			sprintf(numFile, "%d", files);
@@ -846,6 +908,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			strcat(afficheFichiers, "\n");
 			files++;
 		}
+
 		closedir(folder);
 
 		if (send(tabClient[i].dSCFC, afficheFichiers, strlen(afficheFichiers) + 1, 0) == -1)
@@ -855,6 +918,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		int numFichier;
+
 		if (recv(tabClient[i].dSCFC, &numFichier, sizeof(int), 0) == -1)
 		{
 			perror("Erreur au recv");
@@ -862,6 +926,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		folder = opendir("fichiers_serveur");
+
 		if (folder == NULL)
 		{
 			perror("Unable to read directory");
@@ -871,12 +936,15 @@ int useOfCommand(char *msg, char *pseudoSender)
 		entry = readdir(folder);
 		entry = readdir(folder);
 		int j = 0;
+
 		while (j <= numFichier)
 		{
 			entry = readdir(folder);
 			j++;
 		}
+
 		char *nomFichier = entry->d_name;
+
 		closedir(folder);
 
 		strcpy(tabClient[i].nomFichier, nomFichier);
@@ -887,6 +955,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			perror("Erreur thread create");
 		}
+
 		free(afficheFichiers);
 		return 1;
 	}
@@ -894,6 +963,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 	{
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = giveNumSalon();
+
 		if (numSalon == -1)
 		{
 			sendingDM(pseudoSender, "Le maximum de salon est atteint vous ne pouvez pas en créer pour le moment\n");
@@ -903,7 +973,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		strToken = strtok(NULL, "");
 		strToken = strtok(strToken, "\n");
 		strToken = strtok(strToken, " ");
-		printf("ICI: %s\n", strToken);
 
 		if (strToken == NULL)
 		{
@@ -915,9 +984,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		strcpy(nomSalon, strToken);
 
 		strToken = strtok(NULL, " ");
-		printf("ICI2: %s\n", strToken);
 
 		int nbPlaces;
+
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
@@ -938,8 +1007,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		strToken = strtok(NULL, "");
-		printf("ICI3: %s\n", strToken);
-		printf("nbplace %d\n", nbPlaces);
 
 		if (strToken == NULL)
 		{
@@ -962,36 +1029,16 @@ int useOfCommand(char *msg, char *pseudoSender)
 		tabSalon[numSalon].nbPlace = nbPlaces;
 		tabSalon[numSalon].description = description;
 		tabSalon[numSalon].isOccupiedSalon = 1;
+		ecritureSalon();
 		pthread_mutex_unlock(&mutexSalon);
-		// TODO: ecrire dans un fichier les infos du salon
+
 		sendingDM(pseudoSender, "Le salon a bien été créé\n");
+
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
 	{
-		for (int i = 0; i < MAX_SALON; i++)
-		{
-			char j[MAX_SALON];
-			if (tabSalon[i].isOccupiedSalon)
-			{
-				sprintf(j, "%d", i);
-				char *rep = malloc(sizeof(char) * 300);
-				strcpy(rep, "-------------------------------------\n");
-				strcat(rep, j);
-				strcat(rep, ": ");
-				strcat(rep, "Nom: ");
-				strcat(rep, tabSalon[i].nom);
-				strcat(rep, "\n");
-				strcat(rep, "Description: ");
-				strcat(rep, tabSalon[i].description);
-				strcat(rep, "\n\n");
-				sendingDM(pseudoSender, rep);
-				sleep(0.3);
-				free(rep);
-			}
-		}
-		sleep(0.4);
-		sendingDM(pseudoSender, "-------------------------------------\n");
+		afficheSalon(pseudoSender);
 		return 1;
 	}
 	else if (strcmp(strToken, "/suppression") == 0)
@@ -1030,6 +1077,10 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 
 			tabSalon[i].isOccupiedSalon = 0;
+			pthread_mutex_lock(&mutexSalon);
+			ecritureSalon();
+			pthread_mutex_unlock(&mutexSalon);
+
 			sendingDM(pseudoSender, "Le salon a été supprimé\n");
 		}
 
@@ -1048,6 +1099,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		// Vérifier qu ils sont sur le même salon
 		int i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoToKick) == 0)
@@ -1056,6 +1108,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			i++;
 		}
+
 		if (i == MAX_CLIENT)
 		{
 			sendingDM(pseudoSender, "Le pseudo n'existe pas ou n'est pas connécté\n");
@@ -1063,6 +1116,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		int j = 0;
+
 		while (j < MAX_CLIENT)
 		{
 			if (tabClient[j].isOccupied && strcmp(tabClient[j].pseudo, pseudoSender) == 0)
@@ -1071,6 +1125,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			j++;
 		}
+
 		if (j == MAX_CLIENT)
 		{
 			perror("Pseudo non trouvé\n");
@@ -1089,17 +1144,21 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		tabClient[j].idSalon = 0;
+
 		sendingDM(pseudoToKick, "Vous avez été kick du salon\nVous voilà sur le salon général\n");
+
 		char *rep = malloc(sizeof(char) * 50);
 		strcpy(rep, tabClient[j].pseudo);
 		strcat(rep, "a été kick du salon\n");
 		sending(dS, rep, tabClient[i].idSalon);
+
 		return 1;
 	}
 	else if (strcmp(strToken, "/modif") == 0)
 	{
 		char *nomSalon = strtok(NULL, " ");
 		int i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -1108,13 +1167,12 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			i++;
 		}
+
 		if (i == MAX_CLIENT)
 		{
 			perror("Le client n'existe pas\n");
 			exit(-1);
 		}
-
-		printf("Nom: %s\n", nomSalon);
 
 		// Verification que nomSalon n'est pas NULL
 		if (nomSalon == NULL)
@@ -1128,6 +1186,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		receiving(tabClient[i].dSC, modifications, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
 
 		int j = 0;
+
 		while (j < MAX_SALON)
 		{
 			if (tabSalon[j].isOccupiedSalon && strcmp(tabSalon[j].nom, nomSalon) == 0)
@@ -1136,6 +1195,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			j++;
 		}
+
 		if (j == MAX_SALON)
 		{
 			sendingDM(pseudoSender, "Le salon n'existe pas\nVous pouvez vérifier la liste des salon avec la commande \"/liste\"\n");
@@ -1146,7 +1206,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		modifications = strtok(modifications, "\n");
 		modifications = strtok(modifications, " ");
-		printf("NvNom: %s\n", modifications);
 
 		if (modifications == NULL)
 		{
@@ -1157,9 +1216,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 		strcpy(nomSalon, modifications);
 
 		modifications = strtok(NULL, " ");
-		printf("NbPlace: %s\n", modifications);
 
 		int nbPlaces;
+
 		if (modifications == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
@@ -1180,7 +1239,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		modifications = strtok(NULL, "");
-		printf("Desc: %s\n", modifications);
 
 		if (modifications == NULL)
 		{
@@ -1190,7 +1248,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		strcpy(description, modifications);
-		// strcat(description, "\n");
 
 		printf("Nom: %s\n", nomSalon);
 
@@ -1203,12 +1260,13 @@ int useOfCommand(char *msg, char *pseudoSender)
 		tabSalon[numSalon].nbPlace = nbPlaces;
 		tabSalon[numSalon].description = description;
 		tabSalon[numSalon].isOccupiedSalon = 1;
+		ecritureSalon();
 		pthread_mutex_unlock(&mutexSalon);
-		// TODO: ecrire dans un fichier les infos du salon
+
 		sendingDM(pseudoSender, "Le salon a bien été modifé\n");
+
 		return 1;
 	}
-
 	else if (strcmp(strToken, "/connexionSalon\n") == 0)
 	{
 		char *numSalonChar = malloc(sizeof(char) * MAX_SALON);
@@ -1223,11 +1281,13 @@ int useOfCommand(char *msg, char *pseudoSender)
 			}
 			i++;
 		}
+
 		if (i == MAX_CLIENT)
 		{
 			perror("Pseudo pas trouvé");
 			exit(-1);
 		}
+
 		afficheSalon(pseudoSender);
 		sleep(0.2);
 		sendingDM(pseudoSender, "Rentrez le numéro de salon souhaité. Si vous souhaitez annuler, tapez -1\n");
@@ -1240,24 +1300,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		else
 		{
-			// if (strcmp(numSalonChar, "0\n") == 0)
-			// {
-			// numSalon = 0;
-			// }
-			// else
-			// {
-			// 	int buffer = atoi(numSalonChar);
-			// 	if (buffer == 0)
-			// 	{
-			// 		sendingDM(pseudoSender, "Veuillez rentrer un nombre valide\n");
-			// 		free(numSalonChar);
-			// 		return 1;
-			// 	}
-			// 	else
-			// 	{
-			// 		numSalon = buffer;
-			// 	}
-			// }
 			numSalon = atoi(numSalonChar);
 		}
 
@@ -1265,7 +1307,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
 		}
-		// else if (numSalon >= 0 && numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		else if (salonExiste(numSalon) && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		{
 			tabClient[i].idSalon = numSalon;
@@ -1277,6 +1318,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		free(numSalonChar);
+
 		return 1;
 	}
 	else if (strToken[0] == '/')
@@ -1318,6 +1360,7 @@ void *communication(void *clientParam)
 	char *repServ = (char *)malloc(sizeof(char) * 100);
 	repServ = "Entrer /aide pour avoir la liste des commandes disponibles\n";
 	sendingDM(pseudo, repServ);
+
 	// On vérifie que ce n'est pas le pseudo par défaut
 	if (strcmp(pseudo, "FinClient") != 0)
 	{
@@ -1330,6 +1373,7 @@ void *communication(void *clientParam)
 	pthread_mutex_lock(&mutex);
 	nbClient += 1;
 	pthread_mutex_unlock(&mutex);
+
 	printf("Clients connectés : %ld\n", nbClient);
 
 	int isEnd = 0;
@@ -1348,6 +1392,7 @@ void *communication(void *clientParam)
 		// On vérifie si le client utilise une des commandes
 		char *msgToVerif = (char *)malloc(sizeof(char) * strlen(msgReceived));
 		strcpy(msgToVerif, msgReceived);
+
 		if (useOfCommand(msgToVerif, pseudoSender))
 		{
 			free(msgReceived);
@@ -1364,6 +1409,7 @@ void *communication(void *clientParam)
 		// Envoi du message aux autres clients
 		printf("Envoi du message aux %ld clients. \n", nbClient - 1);
 		sending(tabClient[numClient].dSC, msgToSend, tabClient[numClient].idSalon);
+
 		free(msgToSend);
 	}
 
@@ -1373,6 +1419,7 @@ void *communication(void *clientParam)
 	tabClient[numClient].isOccupied = 0;
 	free(tabClient[numClient].pseudo);
 	pthread_mutex_unlock(&mutex);
+
 	shutdown(tabClient[numClient].dSC, 2);
 
 	// On relache le sémaphore pour les clients en attente
@@ -1386,7 +1433,7 @@ void *communication(void *clientParam)
 }
 
 /**
- * @brief Fonction gérant l'interruption du programme par CTRL+C.
+ * @brief Fonction gérant l'interruption du programme par CTRL+C
  * Correspond à la gestion des signaux.
  *
  * @param sig_num numéro du signal
@@ -1408,11 +1455,14 @@ void sigintHandler(int sig_num)
 			}
 			i += 1;
 		}
+
 		shutdown(dS, 2);
 		sem_destroy(&semaphore);
 		sem_destroy(&semaphoreThread);
 		pthread_mutex_destroy(&mutex);
+		pthread_mutex_destroy(&mutexSalon);
 	}
+
 	exit(1);
 }
 
@@ -1428,6 +1478,7 @@ int main(int argc, char *argv[])
 		perror("Erreur : Lancez avec ./serveur [votre_port] ");
 		exit(-1);
 	}
+
 	printf("Début programme\n");
 
 	portServeur = atoi(argv[1]);
@@ -1438,17 +1489,19 @@ int main(int argc, char *argv[])
 	tabSalon[0].idSalon = 0;
 	tabSalon[0].isOccupiedSalon = 1;
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
-	tabSalon[0].nom = "Chat général";
+	tabSalon[0].nom = "Chat_général";
 	tabSalon[0].description = "Salon général par défaut\n";
 	tabSalon[0].nbPlace = MAX_CLIENT;
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
+
 	if (dS_file < 0)
 	{
 		perror("[Fichier] Problème de création de socket serveur");
 		exit(-1);
 	}
+
 	printf("Socket [Fichier] Créé\n");
 
 	// Nommage de la socket
@@ -1456,6 +1509,7 @@ int main(int argc, char *argv[])
 	ad_file.sin_family = AF_INET;
 	ad_file.sin_addr.s_addr = INADDR_ANY;
 	ad_file.sin_port = htons(portServeur + 1);
+
 	if (bind(dS_file, (struct sockaddr *)&ad_file, sizeof(ad_file)) < 0)
 	{
 		perror("[Fichier] Erreur lors du nommage de la socket");
@@ -1485,6 +1539,7 @@ int main(int argc, char *argv[])
 	ad.sin_family = AF_INET;
 	ad.sin_addr.s_addr = INADDR_ANY;
 	ad.sin_port = htons(atoi(argv[1]));
+
 	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
 	{
 		perror("Erreur lors du nommage de la socket");
