@@ -21,7 +21,10 @@
 #define ANSI_COLOR_RESET "\x1b[0m"
 
 /**
- * Définition de la taille maximale de certaines variables
+ * - TAILLE_NOM_SALON = taille maximum du nom du salon
+ * - TAILLE_DESCRIPTION = taille maximum de la description du salon
+ * - MAX_SALON = nombre maximum de salons sur le serveur
+ * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  */
 #define TAILLE_NOM_SALON 20
 #define TAILLE_DESCRIPTION 100
@@ -50,13 +53,13 @@ pthread_t thread_sending;
 pthread_t thread_receiving;
 
 // Déclaration des fonctions
-int endOfCommunication(char *msg);
+int finDeCommunication(char *msg);
 void sending(char *msg);
 void *envoieFichier();
 void *receptionFichier(void *ds);
 int useOfCommand(char *msg);
 void *sendingForThread();
-void receiving(char *rep, ssize_t size);
+void reception(char *rep, ssize_t size);
 void *receivingForThread();
 void sigintHandler(int sig_num);
 
@@ -66,7 +69,7 @@ void sigintHandler(int sig_num);
  * @param msg message du client à vérifier
  * @return 1 si le client veut quitter, 0 sinon.
  */
-int endOfCommunication(char *msg)
+int finDeCommunication(char *msg)
 {
     if (strcmp(msg, "/fin\n") == 0)
     {
@@ -97,9 +100,9 @@ void *envoieFichier()
     char *fileName = nomFichier;
 
     // Création de la socket
-    int dS_file = socket(PF_INET, SOCK_STREAM, 0);
+    int dS_fichier = socket(PF_INET, SOCK_STREAM, 0);
 
-    if (dS_file == -1)
+    if (dS_fichier == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Problème de création de socket client\n" ANSI_COLOR_RESET);
         return NULL;
@@ -113,7 +116,7 @@ void *envoieFichier()
 
     // Envoi d'une demande de connexion
     printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Connection en cours...\n" ANSI_COLOR_RESET);
-    if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
+    if (connect(dS_fichier, (struct sockaddr *)&aS, lgA) < 0)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Problème de connexion au serveur\n" ANSI_COLOR_RESET);
         return NULL;
@@ -142,17 +145,17 @@ void *envoieFichier()
     free(path);
     fclose(stream);
 
-    if (send(dS_file, &length, sizeof(int), 0) == -1)
+    if (send(dS_fichier, &length, sizeof(int), 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send taille du fichier\n" ANSI_COLOR_RESET);
         return NULL;
     }
-    if (send(dS_file, fileName, sizeof(char) * 20, 0) == -1)
+    if (send(dS_fichier, fileName, sizeof(char) * 20, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send nom du fichier\n" ANSI_COLOR_RESET);
         return NULL;
     }
-    if (send(dS_file, toutFichier, sizeof(char) * tailleFichier, 0) == -1)
+    if (send(dS_fichier, toutFichier, sizeof(char) * tailleFichier, 0) == -1)
     {
         fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send contenu du fichier\n" ANSI_COLOR_RESET);
         return NULL;
@@ -301,8 +304,8 @@ int useOfCommand(char *msg)
         sending(strToken);
 
         // Création de la socket
-        int dS_file = socket(PF_INET, SOCK_STREAM, 0);
-        if (dS_file == -1)
+        int dS_fichier = socket(PF_INET, SOCK_STREAM, 0);
+        if (dS_fichier == -1)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Problème de création de socket client\n" ANSI_COLOR_RESET);
             return 1;
@@ -317,7 +320,7 @@ int useOfCommand(char *msg)
 
         // Envoi d'une demande de connexion
         printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Connexion en cours...\n" ANSI_COLOR_RESET);
-        if (connect(dS_file, (struct sockaddr *)&aS, lgA) < 0)
+        if (connect(dS_fichier, (struct sockaddr *)&aS, lgA) < 0)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Problème de connexion au serveur\n" ANSI_COLOR_RESET);
             return 1;
@@ -325,7 +328,7 @@ int useOfCommand(char *msg)
         printf(ANSI_COLOR_MAGENTA "[RECEPTION FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
         char *listeFichier = malloc(sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON));
-        if (recv(dS_file, listeFichier, sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON), 0) == -1)
+        if (recv(dS_fichier, listeFichier, sizeof(char) * (TAILLE_NOM_SALON * MAX_SALON), 0) == -1)
         {
             printf(ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur à la réception de la liste des fichiers\n" ANSI_COLOR_RESET);
             return 1;
@@ -337,7 +340,7 @@ int useOfCommand(char *msg)
 
         int intNumFichier = atoi(numFichier);
 
-        if (send(dS_file, &intNumFichier, sizeof(int), 0) == -1)
+        if (send(dS_fichier, &intNumFichier, sizeof(int), 0) == -1)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur à l'envoi de la taille du fichier" ANSI_COLOR_RESET);
             return 1;
@@ -346,7 +349,7 @@ int useOfCommand(char *msg)
 
         pthread_t thread_receiving_file;
 
-        if (pthread_create(&thread_receiving_file, NULL, receptionFichier, (void *)(long)dS_file) < 0)
+        if (pthread_create(&thread_receiving_file, NULL, receptionFichier, (void *)(long)dS_fichier) < 0)
         {
             fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur de création de thread de récéption client\n" ANSI_COLOR_RESET);
         }
@@ -406,7 +409,7 @@ void *sendingForThread()
         fgets(m, 100, stdin);
 
         // On vérifie si le client veut quitter la communication
-        isEnd = endOfCommunication(m);
+        isEnd = finDeCommunication(m);
 
         // On vérifie si le client utilise une des commandes
         char *msgToVerif = (char *)malloc(sizeof(char) * strlen(m));
@@ -430,7 +433,7 @@ void *sendingForThread()
  * @param rep buffer contenant le message reçu
  * @param size taille maximum du message à recevoir
  */
-void receiving(char *rep, ssize_t size)
+void reception(char *rep, ssize_t size)
 {
     if (recv(dS, rep, size, 0) == -1)
     {
@@ -447,7 +450,7 @@ void *receivingForThread()
     while (!isEnd)
     {
         char *r = (char *)malloc(sizeof(char) * 100);
-        receiving(r, sizeof(char) * 100);
+        reception(r, sizeof(char) * 100);
         if (strcmp(r, "Tout ce message est le code secret pour désactiver les clients") == 0)
         {
             free(r);
@@ -543,7 +546,7 @@ int main(int argc, char *argv[])
 
     char *repServeur = (char *)malloc(sizeof(char) * 60);
     // Récéption de la réponse du serveur
-    receiving(repServeur, sizeof(char) * 60);
+    reception(repServeur, sizeof(char) * 60);
     printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, repServeur);
 
     while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
@@ -556,7 +559,7 @@ int main(int argc, char *argv[])
         sending(myPseudo);
 
         // Récéption de la réponse du serveur
-        receiving(repServeur, sizeof(char) * 60);
+        reception(repServeur, sizeof(char) * 60);
         printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, repServeur);
     }
 
