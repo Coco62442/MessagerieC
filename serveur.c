@@ -486,7 +486,7 @@ void *copieFichierThread(void *clientIndex)
 	struct sockaddr_in aC;
 	socklen_t lg = sizeof(struct sockaddr_in);
 	tabClient[i].dSCFC = accept(dS_file, (struct sockaddr *)&aC, &lg);
-	
+
 	if (tabClient[i].dSCFC < 0)
 	{
 		perror("Problème lors de l'acceptation du client\n");
@@ -1214,6 +1214,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		char *numSalonChar = malloc(sizeof(char) * MAX_SALON);
 		int numSalon; // num salon
 		int i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -1264,7 +1265,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
 		}
-		else if (numSalon >= 0 && numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		// else if (numSalon >= 0 && numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		else if (salonExiste(numSalon) && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		{
 			tabClient[i].idSalon = numSalon;
 			sendingDM(pseudoSender, "Vous avez été déplacé dans le salon\n");
