@@ -21,7 +21,6 @@
 #define ANSI_COLOR_RESET "\x1b[0m"
 
 /**
- * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
  * - MAX_SALON = nombre maximum de salons sur le serveur
  * - TAILLE_PSEUDO = taille maximum du pseudo
  * - TAILLE_DESCRIPTION = taille maximum de la description du salon
@@ -39,7 +38,6 @@
  * - portServeur = port du serveur sur lequel est connecté le client
  * - aS = structure contenant toutes les informations de connexion du client au serveur
  */
-#define MAX_CLIENT 3
 #define MAX_SALON 7
 #define TAILLE_PSEUDO 20
 #define TAILLE_DESCRIPTION 200
@@ -468,7 +466,7 @@ void *receivingForThread()
 			break;
 		}
 
-		printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, r);
+		printf("%s", r);
 		free(r);
 	}
 	shutdown(dS, 2);
