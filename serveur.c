@@ -1477,7 +1477,7 @@ void sigintHandler(int sig_num)
  * _____________________ MAIN _____________________
  */
 // argv[1] = port
-// TODO: verif pseudo pas d espace
+
 int main(int argc, char *argv[])
 {
 	// Verification du nombre de paramètres
@@ -1494,12 +1494,50 @@ int main(int argc, char *argv[])
 	// Fin avec Ctrl + C
 	signal(SIGINT, sigintHandler);
 
+	// Création du salon général de discussion
 	tabSalon[0].idSalon = 0;
 	tabSalon[0].isOccupiedSalon = 1;
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
 	tabSalon[0].nom = "Chat_général";
-	tabSalon[0].description = "Salon général par défaut\n";
+	tabSalon[0].description = "Salon général par défaut";
 	tabSalon[0].nbPlace = MAX_CLIENT;
+
+	// Vérification et ré-instanciation des différents salons si créés auparavant
+	FILE *fic;
+	char *ligne = malloc(sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
+	int numSalon;
+	if ((fic = fopen("fichierSalon.txt", "r")) == NULL)
+	{
+		fprintf(stderr, "Le fichier 'fichierSalon.txt' n'a pas pu être ouvert\n");
+		exit(-1);
+	}
+	char *strToken;
+	while (fgets(ligne, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10), fic) != NULL)
+	{
+		pthread_mutex_lock(&mutexSalon);
+		numSalon = atoi(strtok(ligne, " "));
+		if (numSalon >= MAX_SALON || numSalon <= 0)
+		{
+			continue;
+		}
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		char *desc = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		strToken = strtok(NULL, " ");
+		strcpy(nomSalon, strToken);
+		tabSalon[numSalon].nom = nomSalon;
+		tabSalon[numSalon].nbPlace = atoi(strtok(NULL, " "));
+		strToken = strtok(NULL, "");
+		strcpy(desc, strToken);
+		tabSalon[numSalon].description = desc;
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+	}
+	free(ligne);
+	if (fclose(fic) < 0)
+	{
+		fprintf(stderr, "La fermeture du fichier de description des salons a posé problème\n");
+		exit(-1);
+	}
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
@@ -1509,7 +1547,6 @@ int main(int argc, char *argv[])
 		perror("[Fichier] Problème de création de socket serveur");
 		exit(-1);
 	}
-
 	printf("Socket [Fichier] Créé\n");
 
 	// Nommage de la socket
@@ -1547,7 +1584,7 @@ int main(int argc, char *argv[])
 	ad.sin_family = AF_INET;
 	ad.sin_addr.s_addr = INADDR_ANY;
 	ad.sin_port = htons(atoi(argv[1]));
-
+	
 	if (bind(dS, (struct sockaddr *)&ad, sizeof(ad)) < 0)
 	{
 		perror("Erreur lors du nommage de la socket");
