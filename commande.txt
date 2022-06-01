@@ -23,6 +23,3 @@
   
   Se déconnecter :
   '/fin'
-  
-  Non implémenté :
-  - mode hors ligne
