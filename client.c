@@ -345,101 +345,103 @@ int useOfCommand(char *msg)
 
 		return 1;
 	}
-	else if (strcmp(strToken, "/créer\n") == 0)
-	{
+	// else if (strcmp(strToken, "/créer\n") == 0)
+	// {
+	// 	char *
+		
 
-		char *bufferNomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-		printf("Entrez le nom de votre salon\n");
-		fgets(bufferNomSalon, TAILLE_NOM_SALON + 1, stdin);
-		sleep(0.3);
-		bufferNomSalon = strtok(bufferNomSalon, "\n");
-		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-		strcpy(nomSalon, bufferNomSalon);
-		printf("%s", bufferNomSalon);
-		free(bufferNomSalon);
+	// 	char *bufferNomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+	// 	printf("Entrez le nom de votre salon\n");
+	// 	fgets(bufferNomSalon, TAILLE_NOM_SALON + 1, stdin);
+	// 	sleep(0.3);
+	// 	bufferNomSalon = strtok(bufferNomSalon, "\n");
+	// 	char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+	// 	strcpy(nomSalon, bufferNomSalon);
+	// 	printf("%s", bufferNomSalon);
+	// 	free(bufferNomSalon);
 
-		if (nomSalon == NULL)
-		{
-			printf("Vous devez rentrer le nom du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-			free(nomSalon);
-			return 1;
-		}
+	// 	if (nomSalon == NULL)
+	// 	{
+	// 		printf("Vous devez rentrer le nom du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+	// 		free(nomSalon);
+	// 		return 1;
+	// 	}
 
-		char *bufferNbPlaces = malloc(sizeof(char) * MAX_SALON);
-		printf("Entrez le nombre maximum pour votre salon (ne rien mettre = maximum possible)\n");
-		fgets(bufferNbPlaces, MAX_SALON + 1, stdin);
-		sleep(0.3);
-		bufferNbPlaces = strtok(bufferNbPlaces, "\n");
+	// 	char *bufferNbPlaces = malloc(sizeof(char) * MAX_SALON);
+	// 	printf("Entrez le nombre maximum pour votre salon (ne rien mettre = maximum possible)\n");
+	// 	fgets(bufferNbPlaces, MAX_SALON + 1, stdin);
+	// 	sleep(0.3);
+	// 	bufferNbPlaces = strtok(bufferNbPlaces, "\n");
 
-		char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
-		strcpy(nbPlaces, bufferNbPlaces);
-		printf("%s", bufferNbPlaces);
-		free(bufferNbPlaces);
+	// 	char *nbPlaces = malloc(sizeof(char) * MAX_SALON);
+	// 	strcpy(nbPlaces, bufferNbPlaces);
+	// 	printf("%s", bufferNbPlaces);
+	// 	free(bufferNbPlaces);
 
-		char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
+	// 	char *nbMax = malloc(sizeof(char) * MAX_CLIENT);
 
-		if (nbPlaces == NULL)
-		{
-			char *maxClient = malloc(sizeof(char) * MAX_CLIENT);
-			sprintf(maxClient, "%d", MAX_CLIENT);
-			strcpy(nbMax, maxClient);
-			free(maxClient);
-		}
-		else if (atoi(nbPlaces) < 1)
-		{
-			printf("Vous devez rentrer un nombre de place valide\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-			free(nomSalon);
-			free(nbPlaces);
-			free(nbMax);
-			return 1;
-		}
-		else
-		{
-			strcpy(nbMax, nbPlaces);
-		}
-		char *bufferDescription = malloc(sizeof(char) * TAILLE_DESCRIPTION);
-		printf("Entrez la description de votre salon\n");
-		fgets(bufferDescription, TAILLE_DESCRIPTION + 1, stdin);
-		sleep(0.3);
-		bufferDescription = strtok(bufferDescription, "\n");
+	// 	if (nbPlaces == NULL)
+	// 	{
+	// 		char *maxClient = malloc(sizeof(char) * MAX_CLIENT);
+	// 		sprintf(maxClient, "%d", MAX_CLIENT);
+	// 		strcpy(nbMax, maxClient);
+	// 		free(maxClient);
+	// 	}
+	// 	else if (atoi(nbPlaces) < 1)
+	// 	{
+	// 		printf("Vous devez rentrer un nombre de place valide\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+	// 		free(nomSalon);
+	// 		free(nbPlaces);
+	// 		free(nbMax);
+	// 		return 1;
+	// 	}
+	// 	else
+	// 	{
+	// 		strcpy(nbMax, nbPlaces);
+	// 	}
+	// 	char *bufferDescription = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+	// 	printf("Entrez la description de votre salon\n");
+	// 	fgets(bufferDescription, TAILLE_DESCRIPTION + 1, stdin);
+	// 	sleep(0.3);
+	// 	bufferDescription = strtok(bufferDescription, "\n");
 
-		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
-		strcpy(description, bufferDescription);
-		printf("%s", bufferDescription);
-		free(bufferDescription);
+	// 	char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+	// 	strcpy(description, bufferDescription);
+	// 	printf("%s", bufferDescription);
+	// 	free(bufferDescription);
 
 
-		if (description == NULL)
-		{
-			printf("Vous devez rentrer la description du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
-			free(nomSalon);
-			free(nbPlaces);
-			free(nbMax);
-			free(description);
-		}
-		else
-		{
-			sending(strToken);
-			sleep(0.5);
+	// 	if (description == NULL)
+	// 	{
+	// 		printf("Vous devez rentrer la description du salon\nAnnulation de la création\nFaites \"/aide\" pour plus d'informations\n");
+	// 		free(nomSalon);
+	// 		free(nbPlaces);
+	// 		free(nbMax);
+	// 		free(description);
+	// 	}
+	// 	else
+	// 	{
+	// 		sending(strToken);
+	// 		sleep(0.5);
 
-			sending(nomSalon);
-			sleep(0.5);
-			nbMax = strtok(nbMax, "\n");
-			printf("ICI: %s\n", nbMax);
-			sending(nbMax);
-			sleep(0.5);
-			strcat(description, "\n");
-			sending(description);
-			sleep(0.5);
+	// 		sending(nomSalon);
+	// 		sleep(0.5);
+	// 		nbMax = strtok(nbMax, "\n");
+	// 		printf("ICI: %s\n", nbMax);
+	// 		sending(nbMax);
+	// 		sleep(0.5);
+	// 		strcat(description, "\n");
+	// 		sending(description);
+	// 		sleep(0.5);
 
-			free(nomSalon);
-			free(nbPlaces);
-			free(nbMax);
-			free(description);
-		}
+	// 		free(nomSalon);
+	// 		free(nbPlaces);
+	// 		free(nbMax);
+	// 		free(description);
+	// 	}
 
-		return 1;
-	}
+	// 	return 1;
+	// }
 
 	else if (strcmp(strToken, "/modif") == 0)
 	{
