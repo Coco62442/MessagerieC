@@ -354,18 +354,12 @@ int useOfCommand(char *msg)
 			printf("Vous devez rentrer le nom du salon que vous voulez modifier\nFaites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
-		
+
 		printf("Nom: %s\n", strToken);
 
 		char *command = malloc(sizeof(char) * (TAILLE_NOM_SALON + 8));
 		strcpy(command, "/modif ");
 		strcat(command, strToken);
-
-		sending(command);
-
-		printf("Commande: %s\n", command);
-
-		free(command);
 
 		// Vérification qu'il n'essaye pas de changer le chat général
 		if (strcmp(strToken, "Chat_général") == 0)
@@ -374,6 +368,12 @@ int useOfCommand(char *msg)
 		}
 		else
 		{
+			sending(command);
+
+			printf("Commande: %s\n", command);
+
+			free(command);
+
 			printf("Entrez les modifications du salon de la forme:\nNomSalon NbrPlaces Description du salon\n");
 			char *modifs = malloc(sizeof(char) * (TAILLE_NOM_SALON + TAILLE_DESCRIPTION + 10));
 

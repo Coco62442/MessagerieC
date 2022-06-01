@@ -1043,8 +1043,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		modifications = strtok(modifications, " ");
 		printf("NvNom: %s\n", modifications);
 
-		
-
 		if (modifications == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
