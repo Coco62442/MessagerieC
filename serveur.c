@@ -59,6 +59,7 @@ struct Salon
  * - DOSSIER_SERVEUR = nom du dossier où sont stockés les fichiers
  * - TAILLE_NOM_FICHIER = taille maximum du nom du fichier
  * - TAILLE_MESSAGE = taille maximum d'un message
+ * 
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - tabSalon = tableau répertoriant les salons existants

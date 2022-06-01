@@ -9,6 +9,9 @@
 #include <dirent.h>
 #include <time.h>
 
+/**
+ * Permet de définir les couleurs du terminal
+ */
 #define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_YELLOW "\x1b[33m"
@@ -17,13 +20,16 @@
 #define ANSI_COLOR_CYAN "\x1b[36m"
 #define ANSI_COLOR_RESET "\x1b[0m"
 
-#define TAILLE_NOM_SALON 20
-#define TAILLE_DESCRIPTION 100
-#define MAX_SALON 5
-#define MAX_CLIENT 5
-
 /**
- * - DOSSIER_ENVOI_FICHIERS = chemin du fichier dans lequel sont stockés les fichiers de transfert
+ * - MAX_CLIENT = nombre maximum de clients acceptés sur le serveur
+ * - MAX_SALON = nombre maximum de salons sur le serveur
+ * - TAILLE_PSEUDO = taille maximum du pseudo
+ * - TAILLE_DESCRIPTION = taille maximum de la description du salon
+ * - TAILLE_NOM_SALON = taille maximum du nom du salon
+ * - DOSSIER_CLIENT = nom du dossier où sont stockés les fichiers
+ * - TAILLE_NOM_FICHIER = taille maximum du nom du fichier
+ * - TAILLE_MESSAGE = taille maximum d'un message
+ * 
  * - nomFichier = nom du fichier à transférer
  * - isEnd = booléen vérifiant si le client est connecté ou s'il a terminé la discussion avec le serveur
  * - dS = socket du serveur
@@ -33,7 +39,15 @@
  * - portServeur = port du serveur sur lequel est connecté le client
  * - aS = structure contenant toutes les informations de connexion du client au serveur
  */
-char *DOSSIER_ENVOI_FICHIERS = "./fichiers_client";
+#define MAX_CLIENT 3
+#define MAX_SALON 7
+#define TAILLE_PSEUDO 20
+#define TAILLE_DESCRIPTION 200
+#define TAILLE_NOM_SALON 20
+#define DOSSIER_CLIENT "fichiers_client"
+#define TAILLE_NOM_FICHIER 100
+#define TAILLE_MESSAGE 500
+
 char nomFichier[20];
 int isEnd = 0;
 int dS = -1;
@@ -117,8 +131,9 @@ void *envoieFichier()
 	printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
 	// DEBUT ENVOI FICHIER
-	char *path = malloc(sizeof(char) * 40);
-	strcpy(path, "fichiers_client/");
+	char *path = malloc(sizeof(char) * (strlen(DOSSIER_CLIENT) + 2 + strlen(fileName)));
+	strcpy(path, DOSSIER_CLIENT);
+	strcat(path, "/");
 	strcat(path, fileName);
 
 	FILE *stream = fopen(path, "r");
@@ -167,7 +182,7 @@ void *receptionFichier(void *ds)
 	int returnCode;
 	int index;
 
-	char *fileName = malloc(sizeof(char) * 100);
+	char *fileName = malloc(sizeof(char) * TAILLE_NOM_FICHIER);
 	int tailleFichier;
 
 	if (recv(ds_file, &tailleFichier, sizeof(int), 0) == -1)
@@ -176,7 +191,7 @@ void *receptionFichier(void *ds)
 		return NULL;
 	}
 
-	if (recv(ds_file, fileName, sizeof(char) * 100, 0) == -1)
+	if (recv(ds_file, fileName, sizeof(char) * TAILLE_NOM_FICHIER, 0) == -1)
 	{
 		fprintf(stderr, ANSI_COLOR_RED "[RECEPTION FICHIER] Erreur au recv du nom du fichier\n" ANSI_COLOR_RESET);
 		return NULL;
@@ -190,8 +205,9 @@ void *receptionFichier(void *ds)
 		return NULL;
 	}
 
-	char *emplacementFichier = malloc(sizeof(char) * 120);
-	strcpy(emplacementFichier, "./fichiers_client/");
+	char *emplacementFichier = malloc(sizeof(char) * (strlen(DOSSIER_CLIENT) + 2 + strlen(fileName)));
+	strcpy(emplacementFichier, DOSSIER_CLIENT);
+	strcat(emplacementFichier, "/");
 	strcat(emplacementFichier, fileName);
 
 	FILE *stream = fopen(emplacementFichier, "w");
@@ -252,7 +268,7 @@ int useOfCommand(char *msg)
 		struct dirent *entry;
 		int files = 0;
 
-		folder = opendir("fichiers_client");
+		folder = opendir(DOSSIER_CLIENT);
 		if (folder == NULL)
 		{
 			fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Impossible d'ouvrir le dossier\n" ANSI_COLOR_RESET);
@@ -398,8 +414,8 @@ void *sendingForThread()
 	while (!isEnd)
 	{
 		/*Saisie du message au clavier*/
-		char *m = (char *)malloc(sizeof(char) * 100);
-		fgets(m, 100, stdin);
+		char *m = (char *)malloc(sizeof(char) * TAILLE_MESSAGE);
+		fgets(m, TAILLE_MESSAGE, stdin);
 
 		// On vérifie si le client veut quitter la communication
 		isEnd = endOfCommunication(m);
@@ -444,8 +460,8 @@ void *receivingForThread()
 {
 	while (!isEnd)
 	{
-		char *r = (char *)malloc(sizeof(char) * 100);
-		receiving(r, sizeof(char) * 100);
+		char *r = (char *)malloc(sizeof(char) * TAILLE_MESSAGE);
+		receiving(r, sizeof(char) * TAILLE_MESSAGE);
 		if (strcmp(r, "Tout ce message est le code secret pour désactiver les clients") == 0)
 		{
 			free(r);
@@ -522,11 +538,11 @@ int main(int argc, char *argv[])
 	signal(SIGINT, sigintHandler);
 
 	// Saisie du pseudo du client au clavier
-	char *myPseudo = (char *)malloc(sizeof(char) * 12);
+	char *myPseudo = (char *)malloc(sizeof(char) * TAILLE_PSEUDO);
 	do
 	{
 		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
-		fgets(myPseudo, 12, stdin);
+		fgets(myPseudo, TAILLE_PSEUDO, stdin);
 		for (int i = 0; i < strlen(myPseudo); i++)
 		{
 			if (myPseudo[i] == ' ')
@@ -539,22 +555,22 @@ int main(int argc, char *argv[])
 	// Envoie du pseudo
 	sending(myPseudo);
 
-	char *repServeur = (char *)malloc(sizeof(char) * 60);
+	char *repServeur = (char *)malloc(sizeof(char) * 61);
 	// Récéption de la réponse du serveur
-	receiving(repServeur, sizeof(char) * 60);
+	receiving(repServeur, sizeof(char) * 61);
 	printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, repServeur);
 
 	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
 	{
 		// Saisie du pseudo du client au clavier
 		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
-		fgets(myPseudo, 12, stdin);
+		fgets(myPseudo, TAILLE_PSEUDO, stdin);
 
 		// Envoie du pseudo
 		sending(myPseudo);
 
 		// Récéption de la réponse du serveur
-		receiving(repServeur, sizeof(char) * 60);
+		receiving(repServeur, sizeof(char) * 61);
 		printf(ANSI_COLOR_MAGENTA "%s\n" ANSI_COLOR_RESET, repServeur);
 	}
 
