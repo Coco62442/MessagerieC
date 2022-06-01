@@ -28,7 +28,7 @@
  * - DOSSIER_CLIENT = nom du dossier où sont stockés les fichiers
  * - TAILLE_NOM_FICHIER = taille maximum du nom du fichier
  * - TAILLE_MESSAGE = taille maximum d'un message
- * 
+ *
  * - nomFichier = nom du fichier à transférer
  * - isEnd = booléen vérifiant si le client est connecté ou s'il a terminé la discussion avec le serveur
  * - dS = socket du serveur
@@ -539,7 +539,7 @@ int main(int argc, char *argv[])
 	char *myPseudo = (char *)malloc(sizeof(char) * TAILLE_PSEUDO);
 	do
 	{
-		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
+		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 19 caractères):\n" ANSI_COLOR_RESET);
 		fgets(myPseudo, TAILLE_PSEUDO, stdin);
 		for (int i = 0; i < strlen(myPseudo); i++)
 		{
@@ -561,8 +561,16 @@ int main(int argc, char *argv[])
 	while (strcmp(repServeur, "Pseudo déjà existant\n") == 0)
 	{
 		// Saisie du pseudo du client au clavier
-		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 11 caractères):\n" ANSI_COLOR_RESET);
+		printf(ANSI_COLOR_MAGENTA "Votre pseudo (maximum 19 caractères):\n" ANSI_COLOR_RESET);
 		fgets(myPseudo, TAILLE_PSEUDO, stdin);
+
+		for (int i = 0; i < strlen(myPseudo); i++)
+		{
+			if (myPseudo[i] == ' ')
+			{
+				myPseudo[i] = '_';
+			}
+		}
 
 		// Envoie du pseudo
 		sending(myPseudo);

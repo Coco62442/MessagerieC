@@ -59,7 +59,7 @@ struct Salon
  * - DOSSIER_SERVEUR = nom du dossier où sont stockés les fichiers
  * - TAILLE_NOM_FICHIER = taille maximum du nom du fichier
  * - TAILLE_MESSAGE = taille maximum d'un message
- * 
+ *
  * - tabClient = tableau répertoriant les clients connectés
  * - tabThread = tableau des threads associés au traitement de chaque client
  * - tabSalon = tableau répertoriant les salons existants
@@ -953,6 +953,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (numSalon == -1)
 		{
 			sendingDM(pseudoSender, "Le maximum de salon est atteint vous ne pouvez pas en créer pour le moment\n");
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 
@@ -1069,8 +1070,8 @@ int useOfCommand(char *msg, char *pseudoSender)
 				}
 			}
 
-			tabSalon[i].isOccupiedSalon = 0;
 			pthread_mutex_lock(&mutexSalon);
+			tabSalon[i].isOccupiedSalon = 0;
 			ecritureSalon();
 			pthread_mutex_unlock(&mutexSalon);
 
@@ -1295,16 +1296,17 @@ int useOfCommand(char *msg, char *pseudoSender)
  */
 void *communication(void *clientParam)
 {
+
 	int numClient = (long)clientParam;
 
 	// Réception du pseudo
-	char *pseudo = (char *)malloc(sizeof(char) * TAILLE_PSEUDO);
+	char *pseudo = (char *)malloc(sizeof(char) * (TAILLE_PSEUDO + 29)); // voir Ligne 1330
 	receiving(tabClient[numClient].dSC, pseudo, sizeof(char) * TAILLE_PSEUDO);
 	pseudo = strtok(pseudo, "\n");
 
-	while (verifPseudo(pseudo))
+	while (pseudo == NULL || verifPseudo(pseudo))
 	{
-		send(tabClient[numClient].dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n"), 0);
+		send(tabClient[numClient].dSC, "Pseudo déjà existant\n", strlen("Pseudo déjà existant\n") + 1, 0);
 		receiving(tabClient[numClient].dSC, pseudo, sizeof(char) * TAILLE_PSEUDO);
 		pseudo = strtok(pseudo, "\n");
 	}
@@ -1322,7 +1324,7 @@ void *communication(void *clientParam)
 	if (strcmp(pseudo, "FinClient") != 0)
 	{
 		// On envoie un message pour avertir les autres clients de l'arrivée du nouveau client
-		strcat(pseudo, " a rejoint la communication\n");
+		strcat(pseudo, " a rejoint la communication\n"); // 29
 		sending(tabClient[numClient].dSC, pseudo, 0);
 	}
 
@@ -1577,7 +1579,8 @@ int main(int argc, char *argv[])
 		long numClient = giveNumClient();
 		tabClient[numClient].isOccupied = 1;
 		tabClient[numClient].dSC = dSC;
-		tabClient[numClient].pseudo = " ";
+		tabClient[numClient].pseudo = malloc(sizeof(char) * TAILLE_PSEUDO);
+		strcpy(tabClient[numClient].pseudo, " ");
 		pthread_mutex_unlock(&mutex);
 
 		//_____________________ Communication _____________________
