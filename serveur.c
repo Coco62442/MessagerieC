@@ -1503,16 +1503,16 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 	char *strToken;
-	char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
-	char *desc = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 	while (fgets(ligne, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10), fic) != NULL)
 	{
 		pthread_mutex_lock(&mutexSalon);
 		numSalon = atoi(strtok(ligne, " "));
-		if (numSalon == 0)
+		if (numSalon >= MAX_SALON || numSalon <= 0)
 		{
 			continue;
 		}
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		char *desc = malloc(sizeof(char) * TAILLE_DESCRIPTION);
 		strToken = strtok(NULL, " ");
 		strcpy(nomSalon, strToken);
 		tabSalon[numSalon].nom = nomSalon;
@@ -1523,7 +1523,6 @@ int main(int argc, char *argv[])
 		tabSalon[numSalon].isOccupiedSalon = 1;
 		pthread_mutex_unlock(&mutexSalon);
 	}
-	free(strToken);
 	free(ligne);
 	if (fclose(fic) < 0)
 	{

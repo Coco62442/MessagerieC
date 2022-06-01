@@ -451,8 +451,7 @@ void *receivingForThread()
             free(r);
             break;
         }
-
-        printf(ANSI_COLOR_GREEN "%s" ANSI_COLOR_RESET, r);
+        printf("%s", r);
         free(r);
     }
     shutdown(dS, 2);
