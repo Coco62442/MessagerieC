@@ -83,7 +83,9 @@ struct Salon
  */
 
 #define MAX_CLIENT 3
-#define MAX_SALON 2
+#define MAX_SALON 5
+#define TAILLE_NOM_SALON 20
+#define TAILLE_DESCRIPTION 100
 Client tabClient[MAX_CLIENT];
 pthread_t tabThread[MAX_CLIENT];
 Salon tabSalon[MAX_SALON];
@@ -505,6 +507,27 @@ void afficheSalon(char *pseudoSender)
 }
 
 /**
+ * @brief Fonctions pour vérifier si le salon existe pour un idSalon.
+ *
+ * @param numSalon id de salon à vérifier si existant
+ * @return un integer ;
+ *         1 si le salon existe,
+ *         0 si le salon n'existe pas.
+ */
+int salonExiste(int numSalon)
+{
+	if (numSalon > MAX_SALON || numSalon < 0)
+	{
+		return 0;
+	}
+	else
+	{
+		printf("dans exist");
+		return tabSalon[numSalon].isOccupiedSalon;
+	}
+}
+
+/**
  * @brief Fonctions pour vérifier si un salon peut accepter un nouvel utilisateur.
  *
  * @param numSalon id de salon à vérifier si acceptant
@@ -517,7 +540,6 @@ int salonAcceptNewUser(int numSalon)
 	int nbPlace = 0;
 	for (int i = 0; i < MAX_CLIENT; i++)
 	{
-		// On n'envoie pas au client qui a écrit le message
 		if (tabClient[i].isOccupied && tabClient[i].idSalon == numSalon)
 		{
 			nbPlace++;
@@ -532,6 +554,84 @@ int salonAcceptNewUser(int numSalon)
 		return 0;
 	}
 }
+
+/**
+ * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
+ *
+ * @param nombre le nombre dont on souhaite connaitre la taille
+ * @return le nombre de chiffre de ce nombre
+ */
+int nbChiffreDansNombre(int nombre)
+{
+    int nbChiffre = 0;
+    while(nombre > 0) {
+        nombre = nombre/10;
+        nbChiffre += 1;
+    } 
+    return nbChiffre;
+}
+
+/**
+ * @brief Enregistre le tableau de salon sous la forme d'un fichier txt
+ *
+ */
+void ecritureSalon()
+{
+    FILE *stream = fopen("fichierSalon.txt", "w");
+	if (stream == NULL)
+	{
+		fprintf(stderr, "Cannot open file for writing\n");
+		exit(-1);
+	}
+    int place;
+	
+	for (int i = 1; i < MAX_SALON; i++)
+    {
+        if (tabSalon[i].isOccupiedSalon)
+        {
+			place = 0;
+
+			int intId = nbChiffreDansNombre(tabSalon[i].idSalon);
+            place += intId;
+
+            place += strlen(tabSalon[i].nom);
+
+			int intNbPlace = nbChiffreDansNombre(tabSalon[i].nbPlace);
+            place += intNbPlace;
+			
+            place += strlen(tabSalon[i].description);
+			
+			place += 3; // trois espace 
+            printf("place = %d\n",place);
+    
+			// variable définissant une ligne du fichier à écrire
+            char* ligne = malloc(sizeof(char) * place);
+			// écriture de l'id du salon
+			char idSal[intId];
+			sprintf(idSal, "%d", tabSalon[i].idSalon);
+            strcpy(ligne,idSal);
+            strcat(ligne," ");
+			// écriture du nom du salon
+            strcat(ligne,tabSalon[i].nom);
+            strcat(ligne," ");
+			// écriture de la place (nombre d'utilisateur max pour le salon)
+			char nbSal[intNbPlace];
+			sprintf(nbSal, "%d", tabSalon[i].nbPlace);
+            strcat(ligne, nbSal);
+            strcat(ligne," ");
+			// écriture de la description du salon
+            strcat(ligne,tabSalon[i].description);
+            strcat(ligne,"\n");
+            // printf(ligne);
+			
+            //écriture dans le fichier de la ligne
+            fwrite(ligne, sizeof(char), place, stream);
+			free(ligne);
+        }  
+    }
+    fclose(stream);
+}
+
 
 /**
  * @brief Permet de JOIN les threads terminés.
@@ -785,63 +885,79 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/créer") == 0)
 	{
-		// strToken = strtok(strToken, "\n");
 		pthread_mutex_lock(&mutexSalon);
 		int numSalon = giveNumSalon();
 		if (numSalon == -1)
 		{
-			sendingDM(pseudoSender, "Le maximum de salon est atteint, vous ne pouvez pas en créer un autre pour le moment\n");
+			sendingDM(pseudoSender, "Le maximum de salon est atteint vous ne pouvez pas en créer pour le moment\n");
+			return 1;
+		}
+
+		strToken = strtok(NULL, "");
+		strToken = strtok(strToken, "\n");
+		strToken = strtok(strToken, " ");
+		printf("ICI: %s\n", strToken);
+
+		if (strToken == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		char *nomSalon = malloc(sizeof(char) * TAILLE_NOM_SALON);
+		strcpy(nomSalon, strToken);
+
+		strToken = strtok(NULL, " ");
+		printf("ICI2: %s\n", strToken);
+
+		int nbPlaces;
+		if (strToken == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(strToken) < 1)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(strToken) > MAX_CLIENT)
+		{
+			nbPlaces = MAX_CLIENT;
 		}
 		else
 		{
-			printf("ICI: %s\n", strToken);
-			char *nomSalon = strtok(NULL, " ");
-
-			printf("nomSalon: %s\n", nomSalon);
-			// Vérification des paramètres de la commane
-			if (nomSalon == NULL)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
-			int nbPlaces = atoi(strtok(NULL, " "));
-
-			printf("nbPlace: %d\n", nbPlaces);
-
-			// Vérification des paramètres de la commane
-			if (nbPlaces < 1)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
-			char *description = strtok(NULL, "");
-
-			printf("description: %s\n", description);
-
-			// Vérification des paramètres de la commane
-			if (description == NULL)
-			{
-				pthread_mutex_unlock(&mutexSalon);
-				sendingDM(pseudoSender, "L'utilisation de la commande \"/créer\" est éronné\nFaites \"/aide\" pour plus d'informations\n");
-				return 1;
-			}
-
-			printf("nom : %s\n", nomSalon);
-			printf("nbPlaces : %d\n", nbPlaces);
-			printf("%s\n", description);
-			tabSalon[numSalon].idSalon = numSalon;
-			tabSalon[numSalon].nom = nomSalon;
-			tabSalon[numSalon].nbPlace = nbPlaces;
-			tabSalon[numSalon].description = description;
-			tabSalon[numSalon].isOccupiedSalon = 1;
-			pthread_mutex_unlock(&mutexSalon);
-			// TODO: ecrire dans un fichier les infos du salon
-			sendingDM(pseudoSender, "Le salon a bien été créé\n");
+			nbPlaces = atoi(strToken);
 		}
+
+		strToken = strtok(NULL, "");
+		printf("ICI3: %s\n", strToken);
+		printf("nbplace %d\n", nbPlaces);
+
+		if (strToken == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		strcpy(description, strToken);
+		strcat(description, "\n");
+
+		printf("Nom: %s\n", nomSalon);
+
+		printf("Nb: %d\n", nbPlaces);
+
+		printf("desc: %s\n", description);
+
+		tabSalon[numSalon].idSalon = numSalon;
+		tabSalon[numSalon].nom = nomSalon;
+		tabSalon[numSalon].nbPlace = nbPlaces;
+		tabSalon[numSalon].description = description;
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+		// TODO: ecrire dans un fichier les infos du salon
+		sendingDM(pseudoSender, "Le salon a bien été créé\n");
 		return 1;
 	}
 	else if (strcmp(strToken, "/liste\n") == 0)
@@ -867,6 +983,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 				free(rep);
 			}
 		}
+		sleep(0.4);
 		sendingDM(pseudoSender, "-------------------------------------\n");
 		return 1;
 	}
@@ -877,7 +994,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		if (nomSalon == NULL)
 		{
-			sendingDM(pseudoSender, "Vous devez rajouter le nom du salon après /suppression\n\"/aide\" pour obtenir plus d'informations\n");
+			sendingDM(pseudoSender, "Vous devez rajouter le nom du salon après /suppression\n\"Faites \"/aide\" pour plus d'informations\n");
 			return 1;
 		}
 
@@ -911,11 +1028,185 @@ int useOfCommand(char *msg, char *pseudoSender)
 
 		return 1;
 	}
+	else if (strcmp(strToken, "/kick") == 0 || strcmp(strToken, "/quick") == 0)
+	{
+		char *pseudoToKick = strtok(NULL, " ");
+		pseudoToKick = strtok(pseudoToKick, "\n");
+
+		if (pseudoToKick == NULL)
+		{
+			sendingDM(pseudoSender, "Vous devez rajouter le pseudo de l'utilisateur après /kick\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		// Vérifier qu ils sont sur le même salon
+		int i = 0;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoToKick) == 0)
+			{
+				break;
+			}
+			i++;
+		}
+		if (i == MAX_CLIENT)
+		{
+			sendingDM(pseudoSender, "Le pseudo n'existe pas ou n'est pas connécté\n");
+			return 1;
+		}
+
+		int j = 0;
+		while (j < MAX_CLIENT)
+		{
+			if (tabClient[j].isOccupied && strcmp(tabClient[j].pseudo, pseudoSender) == 0)
+			{
+				break;
+			}
+			j++;
+		}
+		if (j == MAX_CLIENT)
+		{
+			perror("Pseudo non trouvé\n");
+			exit(-1);
+		}
+
+		if (tabClient[i].idSalon != tabClient[j].idSalon)
+		{
+			sendingDM(pseudoSender, "Vous n'êtes pas sur le même salon que la personne\n");
+			return 1;
+		}
+		else if (tabClient[i].idSalon == 0)
+		{
+			sendingDM(pseudoSender, "Vous ne pouvez pas kick un utilisateur du chat général\n");
+			return 1;
+		}
+
+		tabClient[j].idSalon = 0;
+		sendingDM(pseudoToKick, "Vous avez été kick du salon\nVous voilà sur le salon général\n");
+		char *rep = malloc(sizeof(char) * 50);
+		strcpy(rep, tabClient[j].pseudo);
+		strcat(rep, "a été kick du salon\n");
+		sending(dS, rep, tabClient[i].idSalon);
+		return 1;
+	}
+	else if (strcmp(strToken, "/modif") == 0)
+	{
+		char *nomSalon = strtok(NULL, " ");
+		int i = 0;
+		while (i < MAX_CLIENT)
+		{
+			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
+			{
+				break;
+			}
+			i++;
+		}
+		if (i == MAX_CLIENT)
+		{
+			perror("Le client n'existe pas\n");
+			exit(-1);
+		}
+
+		printf("Nom: %s\n", nomSalon);
+
+		// Verification que nomSalon n'est pas NULL
+		if (nomSalon == NULL)
+		{
+			sendingDM(pseudoSender, "Il est nécessaire de mettre le nom du salon à modifié\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		char *modifications = malloc(sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
+
+		receiving(tabClient[i].dSC, modifications, sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
+
+		int j = 0;
+		while (j < MAX_SALON)
+		{
+			if (tabSalon[j].isOccupiedSalon && strcmp(tabSalon[j].nom, nomSalon) == 0)
+			{
+				break;
+			}
+			j++;
+		}
+		if (j == MAX_SALON)
+		{
+			sendingDM(pseudoSender, "Le salon n'existe pas\nVous pouvez vérifier la liste des salon avec la commande \"/liste\"\n");
+			return 1;
+		}
+
+		int numSalon = j;
+
+		modifications = strtok(modifications, "\n");
+		modifications = strtok(modifications, " ");
+		printf("NvNom: %s\n", modifications);
+
+		if (modifications == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		strcpy(nomSalon, modifications);
+
+		modifications = strtok(NULL, " ");
+		printf("NbPlace: %s\n", modifications);
+
+		int nbPlaces;
+		if (modifications == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(modifications) < 1)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+		else if (atoi(modifications) > MAX_CLIENT)
+		{
+			nbPlaces = MAX_CLIENT;
+		}
+		else
+		{
+			nbPlaces = atoi(modifications);
+		}
+
+		modifications = strtok(NULL, "");
+		printf("Desc: %s\n", modifications);
+
+		if (modifications == NULL)
+		{
+			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			return 1;
+		}
+
+		char *description = malloc(sizeof(char) * TAILLE_DESCRIPTION);
+		strcpy(description, modifications);
+		// strcat(description, "\n");
+
+		printf("Nom: %s\n", nomSalon);
+
+		printf("Nb: %d\n", nbPlaces);
+
+		printf("desc: %s\n", description);
+
+		pthread_mutex_lock(&mutexSalon);
+		tabSalon[numSalon].nom = nomSalon;
+		tabSalon[numSalon].nbPlace = nbPlaces;
+		tabSalon[numSalon].description = description;
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+		// TODO: ecrire dans un fichier les infos du salon
+		sendingDM(pseudoSender, "Le salon a bien été modifé\n");
+		return 1;
+	}
 	else if (strcmp(strToken, "/connexionSalon\n") == 0)
 	{
 		char *numSalonChar = malloc(sizeof(char) * MAX_SALON);
-		int numSalon; // num salon
+		int numSalon;
 		int i = 0;
+
 		while (i < MAX_CLIENT)
 		{
 			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
@@ -929,6 +1220,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 			perror("Pseudo pas trouvé");
 			exit(-1);
 		}
+
 		afficheSalon(pseudoSender);
 		sleep(0.2);
 		sendingDM(pseudoSender, "Rentrez le numéro de salon souhaité. Si vous souhaitez annuler, tapez -1\n");
@@ -941,42 +1233,20 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 		else
 		{
-			// if (strcmp(numSalonChar, "0\n") == 0)
-			// {
-			// 	numSalon = 0;
-			// }
-			// else
-			// {
-			// 	int buffer = atoi(numSalonChar);
-			// 	if (buffer == 0)
-			// 	{
-			// 		sendingDM(pseudoSender, "Veuillez rentrer un nombre valide\n");
-			// 		free(numSalonChar);
-			// 		return 1;
-			// 	}
-			// 	else
-			// 	{
-			// 		numSalon = buffer;
-			// 	}
-			// }
 			numSalon = atoi(numSalonChar);
 		}
-
 		if (numSalon == -1)
 		{
 			sendingDM(pseudoSender, "Annulation du changement de salon.\n");
 		}
-		else if (numSalon >= 0 && numSalon < MAX_SALON && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
+		else if (salonExiste(numSalon) && tabSalon[numSalon].isOccupiedSalon && salonAcceptNewUser(numSalon))
 		{
 			tabClient[i].idSalon = numSalon;
-			sendingDM(pseudoSender, "Vous avez été déplacé dans le salon\n");
 		}
 		else
 		{
 			sendingDM(pseudoSender, "Ce salon comporte trop de membres ou n'existe pas, veuillez réessayer plus tard.\n");
 		}
-
-		free(numSalonChar);
 		return 1;
 	}
 	else if (strToken[0] == '/')
@@ -984,7 +1254,6 @@ int useOfCommand(char *msg, char *pseudoSender)
 		sendingDM(pseudoSender, "Faites \"/aide\" pour avoir accès aux commandes disponibles et leur fonctionnement\n");
 		return 1;
 	}
-
 	return 0;
 }
 
@@ -1135,12 +1404,39 @@ int main(int argc, char *argv[])
 	// Fin avec Ctrl + C
 	signal(SIGINT, sigintHandler);
 
+	// Création du salon général de discussion
 	tabSalon[0].idSalon = 0;
 	tabSalon[0].isOccupiedSalon = 1;
 	tabSalon[0].nom = malloc(sizeof(char) * 40);
-	tabSalon[0].nom = "Chat générale";
+	tabSalon[0].nom = "Chat_générale";
 	tabSalon[0].description = "Salon général par défaut";
 	tabSalon[0].nbPlace = MAX_CLIENT;
+
+	// ######################################### LEXAY ###################################
+	// Vérification et ré-instanciation des différents salons si créés auparavant
+	FILE *fic;
+	char *ligne = malloc(sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10));
+	int numSalon;
+	if ((fic = fopen("salons.txt", "r")) < 0)
+	{
+		fprintf(stderr, "Le fichier 'salon.txt' n'a pas pu être ouvert\n");
+		exit(-1);
+	}
+	while (fgets(ligne, (sizeof(char) * (TAILLE_DESCRIPTION + TAILLE_NOM_SALON + 10)), fic) != NULL)
+	{
+		pthread_mutex_lock(&mutexSalon);
+		numSalon = strtok(ligne, " ");
+		if (numSalon == 0)
+		{
+			continue;
+		}
+		tabSalon[numSalon].nom = strtok(NULL, " ");
+		tabSalon[numSalon].nbPlace = strtok(NULL, " ");
+		tabSalon[numSalon].description = strtok(NULL, "");
+		tabSalon[numSalon].isOccupiedSalon = 1;
+		pthread_mutex_unlock(&mutexSalon);
+	}
+	// ######################################### LEXAY ###################################
 
 	// Création de la socket
 	dS_file = socket(PF_INET, SOCK_STREAM, 0);
