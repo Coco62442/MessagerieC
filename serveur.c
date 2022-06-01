@@ -272,22 +272,21 @@ int salonAcceptNewUser(int numSalon)
 	}
 }
 
-// TODO: a implémenté dans le code
 /**
- * @brief Fonction pour récupérer le dSC (socket client) selon un pseudo donné.
+ * @brief Fonction pour récupérer l'index dans tabClient selon un pseudo donné.
  *
  * @param pseudo pseudo pour lequel on cherche la socket
- * @return socket du client nommé [pseudo] ;
+ * @return index du client nommé [pseudo] ;
  *         -1 si le pseudo n'existe pas.
  */
-long pseudoTodSC(char *pseudo)
+long pseudoToInt(char *pseudo)
 {
 	int i = 0;
 	while (i < MAX_CLIENT)
 	{
 		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudo) == 0)
 		{
-			return tabClient[i].dSC;
+			return i;
 		}
 		i++;
 	}
@@ -349,16 +348,8 @@ void sendingAll(char *msg)
  */
 void sendingDM(char *pseudoReceiver, char *msg)
 {
-	int i = 0;
-	while (i < MAX_CLIENT)
-	{
-		if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoReceiver) == 0)
-		{
-			break;
-		}
-		i++;
-	}
-	if (i == MAX_CLIENT)
+	int i = pseudoToInt(pseudoReceiver);
+	if (i == -1)
 	{
 		perror("Pseudo pas trouvé");
 		exit(-1);
@@ -823,18 +814,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/déposer\n") == 0)
 	{
-		long i = 0;
+		long i = pseudoToInt(pseudoSender);
 
-		while (i < MAX_CLIENT)
-		{
-			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-			{
-				break;
-			}
-			i++;
-		}
-
-		if (i == MAX_CLIENT)
+		if (i == -1)
 		{
 			perror("Pseudo pas trouvé");
 			exit(-1);
@@ -851,18 +833,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 	}
 	else if (strcmp(strToken, "/télécharger\n") == 0)
 	{
-		long i = 0;
+		long i = pseudoToInt(pseudoSender);
 
-		while (i < MAX_CLIENT)
-		{
-			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-			{
-				break;
-			}
-			i++;
-		}
-
-		if (i == MAX_CLIENT)
+		if (i == -1)
 		{
 			perror("Pseudo pas trouvé");
 			exit(-1);
@@ -1105,35 +1078,17 @@ int useOfCommand(char *msg, char *pseudoSender)
 		}
 
 		// Vérifier qu ils sont sur le même salon
-		int i = 0;
+		int i = pseudoToInt(pseudoToKick);
 
-		while (i < MAX_CLIENT)
-		{
-			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoToKick) == 0)
-			{
-				break;
-			}
-			i++;
-		}
-
-		if (i == MAX_CLIENT)
+		if (i == -1)
 		{
 			sendingDM(pseudoSender, "Le pseudo n'existe pas ou n'est pas connécté\n");
 			return 1;
 		}
 
-		int j = 0;
+		int j = pseudoToInt(pseudoSender);
 
-		while (j < MAX_CLIENT)
-		{
-			if (tabClient[j].isOccupied && strcmp(tabClient[j].pseudo, pseudoSender) == 0)
-			{
-				break;
-			}
-			j++;
-		}
-
-		if (j == MAX_CLIENT)
+		if (j == -1)
 		{
 			perror("Pseudo non trouvé\n");
 			exit(-1);
@@ -1164,18 +1119,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 	else if (strcmp(strToken, "/modif") == 0)
 	{
 		char *nomSalon = strtok(NULL, " ");
-		int i = 0;
+		int i = pseudoToInt(pseudoSender);
 
-		while (i < MAX_CLIENT)
-		{
-			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-			{
-				break;
-			}
-			i++;
-		}
-
-		if (i == MAX_CLIENT)
+		if (i == -1)
 		{
 			perror("Le client n'existe pas\n");
 			exit(-1);
@@ -1278,18 +1224,9 @@ int useOfCommand(char *msg, char *pseudoSender)
 	{
 		char *numSalonChar = malloc(sizeof(char) * MAX_SALON);
 		int numSalon; // num salon
-		int i = 0;
+		int i = pseudoToInt(pseudoSender);
 
-		while (i < MAX_CLIENT)
-		{
-			if (tabClient[i].isOccupied && strcmp(tabClient[i].pseudo, pseudoSender) == 0)
-			{
-				break;
-			}
-			i++;
-		}
-
-		if (i == MAX_CLIENT)
+		if (i == -1)
 		{
 			perror("Pseudo pas trouvé");
 			exit(-1);
