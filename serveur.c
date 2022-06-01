@@ -977,6 +977,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 
@@ -991,12 +992,14 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
 			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 		else if (atoi(strToken) < 1)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
 			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 		else if (atoi(strToken) > MAX_CLIENT)
@@ -1014,6 +1017,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
 			free(nomSalon);
+			pthread_mutex_unlock(&mutexSalon);
 			return 1;
 		}
 
