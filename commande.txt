@@ -1,3 +1,4 @@
+<<<<<<< HEAD
   -------Commandes disponibles :
   
   Afficher l'aide :

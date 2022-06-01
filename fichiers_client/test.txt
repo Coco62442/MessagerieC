@@ -1,5 +1,14 @@
+<<<<<<< HEAD
 nouveau test
 on essaye
 c est beau
 lol
 test
+=======
+balbal
+je
+suis
+yo
+mec
+123
+>>>>>>> origin/Alexis-S1
