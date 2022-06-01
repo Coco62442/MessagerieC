@@ -210,7 +210,7 @@ void afficheSalon(char *pseudoSender)
 
 			free(rep);
 		}
-		if (nb == 4)
+		if (nb == 3)
 		{
 			sendingDM(pseudoSender, chaineAffiche);
 			strcpy(chaineAffiche, "");
@@ -990,11 +990,13 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
 			return 1;
 		}
 		else if (atoi(strToken) < 1)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
 			return 1;
 		}
 		else if (atoi(strToken) > MAX_CLIENT)
@@ -1011,6 +1013,7 @@ int useOfCommand(char *msg, char *pseudoSender)
 		if (strToken == NULL)
 		{
 			sendingDM(pseudoSender, "Annulation de la création de salon\nUtilisation de la commande \"/créer\" érronnée\nFaites \"/aide\" pour plus d'informations\n");
+			free(nomSalon);
 			return 1;
 		}
 
@@ -1143,14 +1146,14 @@ int useOfCommand(char *msg, char *pseudoSender)
 			return 1;
 		}
 
-		tabClient[j].idSalon = 0;
+		tabClient[i].idSalon = 0;
 
 		sendingDM(pseudoToKick, "Vous avez été kick du salon\nVous voilà sur le salon général\n");
 
 		char *rep = malloc(sizeof(char) * 50);
-		strcpy(rep, tabClient[j].pseudo);
-		strcat(rep, "a été kick du salon\n");
-		sending(dS, rep, tabClient[i].idSalon);
+		strcpy(rep, tabClient[i].pseudo);
+		strcat(rep, " a été kick du salon\n");
+		sending(dS, rep, tabClient[j].idSalon);
 
 		return 1;
 	}

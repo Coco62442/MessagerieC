@@ -1,2 +1,2 @@
-1 S1 3 s
-2 S2 2 sa sa
+1 S1 3 wx
+2 S1 3 aza ze
