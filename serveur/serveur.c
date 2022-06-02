@@ -60,8 +60,8 @@ struct Salon
  * - TAILLE_NOM_FICHIER = taille maximum du nom du fichier
  * - TAILLE_MESSAGE = taille maximum d'un message
  */
-#define MAX_CLIENT 3
-#define MAX_SALON 7
+#define MAX_CLIENT 7
+#define MAX_SALON 3
 #define TAILLE_PSEUDO 20
 #define TAILLE_DESCRIPTION 200
 #define TAILLE_NOM_SALON 20
@@ -726,7 +726,7 @@ int utilisationCommande(char *msg, char *pseudoEnvoyeur)
 		// Préparation du message à envoyer
 		char *msgAEnvoyer = (char *)malloc(sizeof(char) * TAILLE_MESSAGE);
 		strcpy(msgAEnvoyer, pseudoEnvoyeur);
-		strcat(msgAEnvoyer, " vous chuchotte : ");
+		strcat(msgAEnvoyer, " vous chuchote : ");
 		strcat(msgAEnvoyer, msg);
 
 		// Envoi du message au destinataire
@@ -1060,10 +1060,10 @@ int utilisationCommande(char *msg, char *pseudoEnvoyeur)
 		{
 			for (int j = 0; j < MAX_CLIENT; j++)
 			{
-				if (tabClient[j].estOccupe && tabClient[j].idSalon == tabSalon[i].idSalon)
+				if (tabClient[j].estOccupe && (tabClient[j].idSalon == tabSalon[i].idSalon))
 				{
 					tabClient[j].idSalon = 0;
-					envoiPrive(tabClient[j].pseudo, "Vous avez été envoyé sur le salon générale\n");
+					envoiPrive(tabClient[j].pseudo, "Vous avez été envoyé sur le salon général\n");
 				}
 			}
 

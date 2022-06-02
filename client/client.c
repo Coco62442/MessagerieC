@@ -105,7 +105,7 @@ void envoi(char *msg)
  */
 void *envoieFichier()
 {
-	char *nomFichier = nomFichier;
+	char *nvNomFichier = nomFichier;
 
 	// Création de la socket
 	int dS_fichier = socket(PF_INET, SOCK_STREAM, 0);
@@ -131,11 +131,14 @@ void *envoieFichier()
 	}
 	printf(ANSI_COLOR_MAGENTA "[ENVOI FICHIER] Socket connectée\n" ANSI_COLOR_RESET);
 
+	printf("%s\n", nvNomFichier);
 	// DEBUT ENVOI FICHIER
-	char *chemin = malloc(sizeof(char) * (strlen(DOSSIER_CLIENT) + 2 + strlen(nomFichier)));
+	char *chemin = malloc(sizeof(char) * (strlen(DOSSIER_CLIENT) + 2 + strlen(nvNomFichier)));
 	strcpy(chemin, DOSSIER_CLIENT);
 	strcat(chemin, "/");
-	strcat(chemin, nomFichier);
+	strcat(chemin, nvNomFichier);
+	
+	printf("%s\n", chemin);
 
 	FILE *stream = fopen(chemin, "r");
 	if (stream == NULL)
@@ -159,7 +162,7 @@ void *envoieFichier()
 		fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send taille du fichier\n" ANSI_COLOR_RESET);
 		return NULL;
 	}
-	if (send(dS_fichier, nomFichier, sizeof(char) * 20, 0) == -1)
+	if (send(dS_fichier, nvNomFichier, sizeof(char) * 20, 0) == -1)
 	{
 		fprintf(stderr, ANSI_COLOR_RED "[ENVOI FICHIER] Erreur au send nom du fichier\n" ANSI_COLOR_RESET);
 		return NULL;
