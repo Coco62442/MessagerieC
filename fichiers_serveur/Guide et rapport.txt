@@ -1,0 +1,122 @@
+Manuel d’utilisation
+d’application
+Messagerie instantanée C
+C100C
+- BENAITON Laura
+- CLEMENT Corentin
+- FONDARD Alexis
+Qui sommes nous et pourquoi ce projet
+Dans le cadre de notre première année en cycle Ingénieur Informatique et Gestion à Polytech
+Montpellier, notre enseignement en “Fondamentaux des applications réparties” s’est conclu par
+la réalisation d’un projet sur 8 semaines. Ce projet, organisé en équipe de 2 à 3 personnes, a
+pour objectif de développer une communication entre différents clients par le biais d’un serveur
+en langage C.
+Une équipe de trois étudiants vous présente ici leur projet : Alexis FONDARD MARTIN, Corentin
+CLÉMENT, Laura BENAITON se sont associés dans la réalisation de ce projet.
+Table des matières
+Table des matières 2
+À propos 4
+Installation et prérequis 5
+Premiers pas et Utilisation 6
+Partie Serveur 6
+Partie Client 7
+À propos
+L’application se base sur le principe d’un serveur, où plusieurs clients peuvent échanger. Chaque
+client peut se connecter afin d’avoir accès à un salon de discussion général, où il peut envoyer
+des messages que tous les autres recevront. Il peut également envoyer un message privé que
+seul un utilisateur spécifié recevra s’il est connecté. Il est également possible de créer de
+nouveau ‘salon’, qui sont des canaux de discussions privés, où seuls ceux qui y sont connectés
+peuvent recevoir les messages envoyés dans ceux-ci. Il existe de nombreuses autres fonctions,
+comme l’échange de fichiers, où un client peut déposer un fichier sur le serveur que les autres
+clients pourront récupérer/télécharger. Il est également possible de connaître les noms des
+autres utilisateurs en ligne, ou savoir si un utilisateur spécifique est connecté en renseignant
+son nom. Enfin, il est possible de se déconnecter du serveur.
+Toutes ces fonctionnalités sont décrites dans un document qui peut être appelé à tout moment
+dans une commande ‘/aide’.
+L’objectif principal est donc qu’une personne “possède” le serveur et que plusieurs autres
+personnes puissent s’y connecter.
+Lien vers notre Github :
+https://github.com/Coco62442/MessagerieC
+Installation et prérequis
+Il est important pour pouvoir utiliser notre application d’avoir conscience des besoins
+technologiques primordiaux. Ainsi un terminal sous le système d’exploitation Linux est
+nécessaire.
+Si vous ne possédez pas cette technologie, il est possible de facilement l’installer et de préparer
+votre espace de travail.
+Vous pouvez installer Ubuntu sur un WSL (Windows Sub Linux, machine virtuelle Linux sous
+Windows) via votre service d’installation Microsoft Store ou internet.
+Il suffit ensuite de lancer un terminal Linux à jour.
+Premiers pas et Utilisation
+L’application est composée de deux dossiers :
+- La partie Serveur
+- La partie Client
+Partie Serveur
+- Mise en place
+Le dossier serveur est composé de trois fichiers et d’un dossier.
+Le fichier serveur.c : c’est la base de l'application, ce fichier est le code source permettant une
+fois compilé l’exécution de l’application.
+Le fichier fichierSalon.txt : comporte les salons créés précédemment, ce fichier permet de les
+recréer automatiquement au lancement du serveur.
+Le fichier commande.txt : comporte un récapitulatif de toutes les commandes possibles sur le
+serveur et permet de guider les clients qui l’appelle.
+Le dossier fichiers_serveur : permet aux clients de déposer de nouveaux fichiers et de
+télécharger ceux déjà présent.
+- Première utilisation
+Afin de lancer le serveur, le fichier serveur.c doit être compilé puis lancé sur une machine
+(virtuelle) Linux. Pour cela, lancez un terminal Linux et placez vous dans votre dossier serveur.
+Effectuez ensuite la commande “./serveur [3000]”. Vous pouvez utiliser n’importe lequel de vos
+ports libres, tel que le 3000 ou les suivants. Il faudra le transmettre aux personnes souhaitant
+se connecter à celui-ci.
+Si besoin, vous pouvez compiler le fichier serveur.c, vous pouvez utiliser la commande “gcc
+-pthread -o serveur serveur.c”.
+- Possibilités
+Le serveur permet de gérer de nombreux échanges avec des clients interconnectés, mais aussi
+avec lui-même. Ainsi, il a pour objectif principal l’échange de messages entre des utilisateurs
+connectés via des salons de discussion.
+Un client peut demander à se connecter, si le serveur peut l’accepter (si le nombre de clients
+maximum n’est pas atteint), alors celui-ci arrivera dans un chat général, où tout le monde peut
+discuter. Un client peut ensuite créer un nouveau salon, où les messages généraux (pas les mp)
+s'envoient uniquement entre les membres qui y sont connectés. Il est également possible de
+modifier et supprimer ces canaux mais aussi de les lister. Si les salons créés n’ont pas tous été
+supprimés lorsque le serveur s'éteint, il seront restauré à son prochain lancement. Le serveur
+permet également à un client de connaître tous les membres qui sont connectés, de savoir si un
+utilisateur précis l’est.
+Le serveur permet également un transfert de fichier entre les membres, accueillant dans le
+dossier fichiers-serveur des fichiers pouvant être télécharger à distance, mais aussi de recevoir
+de nouveaux fichiers et de les stocker pour les rendre accessibles.
+Partie Client
+- Mise en place
+Le dossier client est composé d’un dossier et d’un fichier.
+Le fichier client.c : permet à une personne de se connecter au serveur, afin de pouvoir
+communiquer avec d’autres personnes.
+Le dossier fichiers_client : permet au client de déposer ses fichiers sur le serveur et de
+télécharger ceux présent à distance.
+- Première utilisation
+Afin de se connecter au serveur, le fichier client.c doit être compilé puis exécuté sur une
+machine (virtuelle) Linux. Pour cela, lancez un terminal Linux et placez vous dans votre dossier
+client. Effectuez ensuite la commande “./client [adresse ip du serveur] [port]”. Où l’adresse ip
+et le port vous sont fournis par le gérant du serveur.
+Si besoin, vous pouvez compiler le fichier client.c, vous pouvez utiliser la commande “gcc
+-pthread -o client client.c”.
+- Possibilités
+En tant que client, l’utilisateur va pouvoir utiliser une multitude de fonctionnalités
+implémentées permettant un échange le plus fluide et rapide possible. Après une connexion au
+serveur, le client se retrouve dans le chat général, où arrivent tous les utilisateurs lors de leur
+première connexion. La communication est établie et ils peuvent discuter ensemble. Si
+l’utilisateur à besoin de se rappeler des différentes instructions possibles, il peut à tout moment
+effectuer la commande ‘/aide’ qui affichera toutes les commandes disponibles. Ainsi, un
+utilisateur pourra savoir si un autre est connecté à l’aide de son pseudo [‘/estConnecte
+nomUtilisateur’] mais aussi connaître tous les autres utilisateurs connectés en même temps
+que lui [‘/enLigne’]. L’utilisateur peut ainsi diffuser un message à tous les autres utilisateurs
+connectés au même salon que lui. Il peut également envoyer des messages privés à un
+utilisateur en particulier qui sera le seul à le recevoir [‘/mp nomUtilisateur’]. S’il souhaite
+discuter avec un groupe de personne plus restreinte ou sur un sujet particulier, il peut créer un
+canal de discussion [‘/créer nomSalon nbPersonneMaxDessus DescriptionDuSalon’] qu’il pourra
+par la suite modifier [‘/modif nomSalon nbPlacesDispo descriptionDuSalon’] ou supprimer
+[‘/suppression nomSalon’]. La connexion à ces canaux se fait grâce à la commande
+‘/connexionSalon’ puis les instructions à suivre seront déroulées. Il peut à tout moment trouver
+la liste des salons disponible avec la commande ‘/liste’. Lorsqu’il se trouve dans un salon avec
+un autre utilisateur, il peut faire sortir un utilisateur de ce salon grâce à la commande ‘/kick
+nomUtilisateur’. Enfin, un dossier du serveur est accessible pour tous les clients afin de
+télécharger des fichiers présents dans celui-ci [‘/télécharger’] mais aussi d’y déposer les siens
+pour que d’autres utilisateurs puissent y avoir accès [‘/déposer’].

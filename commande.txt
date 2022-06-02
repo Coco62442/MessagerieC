@@ -28,7 +28,7 @@
   '/liste'
 
   Modifier un salon existant :
-  '/modif nomSalon nbPlacesDispo description du salon'
+  '/modif nomSalon'
 
   Supprimer un salon existant :
   '/suppression nomSalon'
